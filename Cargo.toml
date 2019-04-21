@@ -1,0 +1,16 @@
+[package]
+name = "phusis"
+version = "0.1.0"
+authors = ["Isidor Nygren <karlisidornygren@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "phusis"
+path = "src/lib.rs"
+
+[dependencies]
+nalgebra = "0.17"
+
+[dev-dependencies]
+stopwatch = "0.0.7"
+ggez = "0.4.4"
