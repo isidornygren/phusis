@@ -10,8 +10,11 @@ use ggez::{graphics, graphics::Rect, mouse, timer, Context, ContextBuilder, Game
 
 use nalgebra::Vector2;
 
+use rand::prelude::*;
+
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 const NS_PER_UPDATE: f32 = 1_000_000_000_f32 / 60f32;
 
@@ -49,52 +52,27 @@ impl GameState {
         let body = physics_world.add_body(Body::new(
             100f32,
             1f32,
-            Box::new(Circle { radius: 32f32 }),
+            Box::new(Circle { radius: 16f32 }),
             Vector2::new(32f32, 256f32),
             false,
         ));
         bodies.push(body);
-        // random bodies
-        let body1 = physics_world.add_body(Body::new(
-            1f32,
-            1f32,
-            Box::new(Circle { radius: 16f32 }),
-            Vector2::new(256f32, 256f32),
-            true,
-        ));
-        bodies.push(body1);
-        let body2 = physics_world.add_body(Body::new(
-            1f32,
-            1f32,
-            Box::new(Circle { radius: 8f32 }),
-            Vector2::new(256f32, 256f32),
-            false,
-        ));
-        bodies.push(body2);
-        let body3 = physics_world.add_body(Body::new(
-            1f32,
-            1f32,
-            Box::new(Circle { radius: 8f32 }),
-            Vector2::new(60f32, 100f32),
-            false,
-        ));
-        bodies.push(body3);
-        let body4 = physics_world.add_body(Body::new(
-            1f32,
-            1f32,
-            Box::new(Circle { radius: 8f32 }),
-            Vector2::new(350f32, 120f32),
-            false,
-        ));
-        bodies.push(body4);
-        let body5 = physics_world.add_body(Body::new(
-            1f32,
-            1f32,
-            Box::new(Circle { radius: 8f32 }),
-            Vector2::new(300f32, 180f32),
-            false,
-        ));
-        bodies.push(body5);
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..100 {
+            let x = rng.gen_range(36, 724) as f32;
+            let y = rng.gen_range(36, 524) as f32;
+
+            let new_body = physics_world.add_body(Body::new(
+                1f32,
+                1f32,
+                Box::new(Circle { radius: 8f32 }),
+                Vector2::new(x, y),
+                false,
+            ));
+            bodies.push(new_body);
+        }
         let s = GameState {
             bodies,
             physics_world,
@@ -125,7 +103,6 @@ impl EventHandler for GameState {
 
         // draw the quad tree aabb
         let qq_aabb = self.physics_world.get_quad_tree_aabb();
-        println!("Length: {}", qq_aabb.len());
         for aabb in qq_aabb {
             let body_rect = aabb.get_rect();
             graphics::set_color(ctx, graphics::Color::new(0.0, 1.0, 0.0, 1.0)).unwrap();
@@ -141,14 +118,14 @@ impl EventHandler for GameState {
         for body in self.bodies.clone() {
             let borrowed_body = body.borrow();
             // draw aabb of body
-            let body_rect = borrowed_body.get_aabb().get_rect();
+            /*let body_rect = borrowed_body.get_aabb().get_rect();
             graphics::set_color(ctx, graphics::Color::new(1.0, 0.0, 0.0, 1.0)).unwrap();
             graphics::rectangle(
                 ctx,
                 graphics::DrawMode::Line(1f32),
                 Rect::new(body_rect.0, body_rect.1, body_rect.2, body_rect.3),
             )
-            .unwrap();
+            .unwrap();*/
             // draw a circle
             graphics::set_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0)).unwrap();
             graphics::circle(

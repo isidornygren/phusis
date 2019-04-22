@@ -80,7 +80,7 @@ impl PhysicsWorld {
     pub fn new() -> Self {
         return PhysicsWorld {
             bodies: vec![],
-            quad_tree: quad_tree::QuadTree::new(0, AABB::new(20f32, 20f32, 500f32, 300f32)),
+            quad_tree: quad_tree::QuadTree::new(0, AABB::new(20f32, 20f32, 760f32, 560f32)),
         };
     }
     pub fn add_body(&mut self, body: Body) -> Rc<RefCell<Body>> {

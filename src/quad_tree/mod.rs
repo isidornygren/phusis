@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 const MAX_DEPTH: u8 = 5;
-const MAX_CHILDREN: usize = 1;
+const MAX_CHILDREN: usize = 10;
 
 /**
  * TODO: Set children to a fixed array as max children will be a small number
