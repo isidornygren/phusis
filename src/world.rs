@@ -4,10 +4,10 @@ use std::rc::Rc;
 use nalgebra::Vector2;
 
 use crate::body::Body;
-use crate::checks;
+use crate::checks::check_collision;
 use crate::collision::Collision;
-use crate::shape::Circle;
-use crate::shape::Shape;
+use crate::quad_tree;
+use crate::shape::{Circle, Shape, AABB};
 
 /**
  * Sets velocity in m/s
@@ -73,11 +73,15 @@ fn correct_position(a: &mut Body, b: &mut Body, collision: &Collision) {
 
 pub struct PhysicsWorld {
     bodies: Vec<Rc<RefCell<Body>>>,
+    quad_tree: quad_tree::QuadTree,
 }
 
 impl PhysicsWorld {
     pub fn new() -> Self {
-        return PhysicsWorld { bodies: vec![] };
+        return PhysicsWorld {
+            bodies: vec![],
+            quad_tree: quad_tree::QuadTree::new(0, AABB::new(20f32, 20f32, 500f32, 300f32)),
+        };
     }
     pub fn add_body(&mut self, body: Body) -> Rc<RefCell<Body>> {
         let body_ref = Rc::new(RefCell::new(body));
@@ -87,7 +91,7 @@ impl PhysicsWorld {
     pub fn remove_body(&mut self, body: Body) {
         unimplemented!();
     }
-    pub fn update(&mut self, dt: f32) {
+    fn calc_velocity(&mut self, dt: f32) {
         // Update position of bodies based on velocity
         for body in self.bodies.iter() {
             let mut body_mut = body.borrow_mut();
@@ -111,10 +115,36 @@ impl PhysicsWorld {
 
             body_mut.position = body_mut.position + body_mut.velocity * dt;
         }
+    }
+    pub fn update_with_quad(&mut self, dt: f32) {
+        self.calc_velocity(dt);
+        self.quad_tree.clear();
+        for body in self.bodies.iter() {
+            self.quad_tree.insert(Rc::clone(body));
+        }
+        let collisions = self.quad_tree.check_collisions();
+        for collision in collisions {
+            resolve_collision(
+                &mut collision.a.borrow_mut(),
+                &mut collision.b.borrow_mut(),
+                &collision,
+            );
+            correct_position(
+                &mut collision.a.borrow_mut(),
+                &mut collision.b.borrow_mut(),
+                &collision,
+            );
+        }
+    }
+    pub fn get_quad_tree_aabb(&self) -> Vec<AABB> {
+        return self.quad_tree.get_node_aabb();
+    }
+    pub fn update(&mut self, dt: f32) {
+        self.calc_velocity(dt);
         // Resolve collision for body pairs
         for (i, a) in self.bodies.iter().enumerate() {
             for b in &self.bodies[(i + 1)..] {
-                let resolution = a.borrow().check_collision(&b.borrow());
+                let resolution = check_collision(&a, &b);
                 match resolution {
                     Some(collision) => {
                         resolve_collision(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);

@@ -1,9 +1,12 @@
 use nalgebra::Vector2;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 // use physics::aabb::AABB;
 use crate::body::Body;
 use crate::collision::{Collision, Manifold};
-use crate::shape::Circle;
+use crate::shape::{Circle, ShapeKind};
 
 fn distance_squared(vec: &Vector2<f32>) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
@@ -24,10 +27,27 @@ fn distance_squared(vec: &Vector2<f32>) -> f32 {
     return r < (a.position.x + b.position.x).powf(2f32) + (a.position.y + b.position.y).powf(2f32);
 } */
 
-pub fn circle_vs_circle(a: &Body, b: &Body) -> Option<Collision> {
-    let normal = b.position - a.position;
+pub fn check_collision(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
+    match (a.borrow().shape.get_kind(), b.borrow().shape.get_kind()) {
+        (ShapeKind::Circle, ShapeKind::Circle) => circle_vs_circle(a, b),
+        (ShapeKind::AABB, ShapeKind::AABB) => {
+            unimplemented!();
+        }
+        (ShapeKind::Circle, ShapeKind::AABB) => {
+            unimplemented!();
+        }
+        (ShapeKind::AABB, ShapeKind::Circle) => {
+            unimplemented!();
+        }
+    }
+}
 
-    let radius = (a.shape.get_radius() + b.shape.get_radius()).powf(2f32);
+pub fn circle_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
+    let a_borrowed = a.borrow();
+    let b_borrowed = b.borrow();
+    let normal = b_borrowed.position - a_borrowed.position;
+
+    let radius = (a_borrowed.shape.get_radius() + b_borrowed.shape.get_radius()).powf(2f32);
 
     let distance_sqr = distance_squared(&normal);
 
@@ -38,15 +58,20 @@ pub fn circle_vs_circle(a: &Body, b: &Body) -> Option<Collision> {
 
     if distance != 0f32 {
         return Some(Collision {
-            penetration_depth: (a.shape.get_radius() + b.shape.get_radius()) - distance,
+            penetration_depth: (a_borrowed.shape.get_radius() + b_borrowed.shape.get_radius())
+                - distance,
             normal: normal / distance,
+            a: Rc::clone(a),
+            b: Rc::clone(b),
         });
     } else {
         // Circles are on the same position
         // Choose random (but consistent) values
         return Some(Collision {
-            penetration_depth: a.shape.get_radius(),
+            penetration_depth: a_borrowed.shape.get_radius(),
             normal: Vector2::new(1f32, 0f32),
+            a: Rc::clone(a),
+            b: Rc::clone(b),
         });
     }
 }

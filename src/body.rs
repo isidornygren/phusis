@@ -1,6 +1,6 @@
 use crate::checks::circle_vs_circle;
 use crate::collision::Collision;
-use crate::shape::{Circle, Shape, ShapeKind};
+use crate::shape::{Circle, Shape, ShapeKind, AABB};
 
 use nalgebra::Vector2;
 
@@ -41,19 +41,8 @@ impl Body {
         };
     }
 
-    pub fn check_collision(&self, other: &Body) -> Option<Collision> {
-        match (self.shape.get_kind(), other.shape.get_kind()) {
-            (ShapeKind::Circle, ShapeKind::Circle) => circle_vs_circle(self, other),
-            (ShapeKind::AABB, ShapeKind::AABB) => {
-                unimplemented!();
-            }
-            (ShapeKind::Circle, ShapeKind::AABB) => {
-                unimplemented!();
-            }
-            (ShapeKind::AABB, ShapeKind::Circle) => {
-                unimplemented!();
-            }
-        }
+    pub fn get_aabb(&self) -> AABB {
+        self.shape.get_aabb() + self.position
     }
 
     /*pub fn apply_force(&mut self, force: Vector2<f32>) {

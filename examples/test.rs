@@ -6,7 +6,7 @@ use phusis::shape::Circle;
 use phusis::world::PhysicsWorld;
 
 use ggez::event::{self, EventHandler};
-use ggez::{graphics, mouse, timer, Context, ContextBuilder, GameResult};
+use ggez::{graphics, graphics::Rect, mouse, timer, Context, ContextBuilder, GameResult};
 
 use nalgebra::Vector2;
 
@@ -47,7 +47,7 @@ impl GameState {
         let mut physics_world = PhysicsWorld::new();
         // Mouse body
         let body = physics_world.add_body(Body::new(
-            5f32,
+            100f32,
             1f32,
             Box::new(Circle { radius: 32f32 }),
             Vector2::new(32f32, 256f32),
@@ -71,6 +71,30 @@ impl GameState {
             false,
         ));
         bodies.push(body2);
+        let body3 = physics_world.add_body(Body::new(
+            1f32,
+            1f32,
+            Box::new(Circle { radius: 8f32 }),
+            Vector2::new(60f32, 100f32),
+            false,
+        ));
+        bodies.push(body3);
+        let body4 = physics_world.add_body(Body::new(
+            1f32,
+            1f32,
+            Box::new(Circle { radius: 8f32 }),
+            Vector2::new(350f32, 120f32),
+            false,
+        ));
+        bodies.push(body4);
+        let body5 = physics_world.add_body(Body::new(
+            1f32,
+            1f32,
+            Box::new(Circle { radius: 8f32 }),
+            Vector2::new(300f32, 180f32),
+            false,
+        ));
+        bodies.push(body5);
         let s = GameState {
             bodies,
             physics_world,
@@ -91,18 +115,42 @@ impl EventHandler for GameState {
 
         while timer::check_update_time(ctx, DESIRED_FPS) {
             let seconds = 1.0 / (DESIRED_FPS as f32);
-            self.physics_world.update(seconds);
+            self.physics_world.update_with_quad(seconds);
         }
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
+
+        // draw the quad tree aabb
+        let qq_aabb = self.physics_world.get_quad_tree_aabb();
+        println!("Length: {}", qq_aabb.len());
+        for aabb in qq_aabb {
+            let body_rect = aabb.get_rect();
+            graphics::set_color(ctx, graphics::Color::new(0.0, 1.0, 0.0, 1.0)).unwrap();
+            graphics::rectangle(
+                ctx,
+                graphics::DrawMode::Line(1f32),
+                Rect::new(body_rect.0, body_rect.1, body_rect.2, body_rect.3),
+            )
+            .unwrap();
+        }
+
         // canvas.set_draw_color(Color::RGB(255, 255, 255));
-        graphics::set_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 2.0)).unwrap();
         for body in self.bodies.clone() {
             let borrowed_body = body.borrow();
-            // canvas.fill
+            // draw aabb of body
+            let body_rect = borrowed_body.get_aabb().get_rect();
+            graphics::set_color(ctx, graphics::Color::new(1.0, 0.0, 0.0, 1.0)).unwrap();
+            graphics::rectangle(
+                ctx,
+                graphics::DrawMode::Line(1f32),
+                Rect::new(body_rect.0, body_rect.1, body_rect.2, body_rect.3),
+            )
+            .unwrap();
+            // draw a circle
+            graphics::set_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0)).unwrap();
             graphics::circle(
                 ctx,
                 graphics::DrawMode::Line(2f32),
