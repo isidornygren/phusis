@@ -25,7 +25,7 @@ const BODIES: u32 = 20;
 fn main() {
     let mut rng = rand::thread_rng();
 
-    println!("Testing");
+    println!("------ Testing ------ \n");
     println!("Testing with quad tree");
     let mut tot_us = 0;
     for _ in 0..ITERATIONS {

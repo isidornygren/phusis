@@ -67,7 +67,7 @@ impl GameState {
             let new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
-                Box::new(Circle { radius: 8f32 }),
+                Box::new(Circle { radius: 2f32 }),
                 Vector2::new(x, y),
                 false,
             ));
@@ -133,7 +133,7 @@ impl EventHandler for GameState {
                 graphics::DrawMode::Line(2f32),
                 graphics::Point2::new(borrowed_body.position.x, borrowed_body.position.y),
                 borrowed_body.shape.get_radius(),
-                0.1f32,
+                0.5f32,
             )
             .unwrap();
         }
