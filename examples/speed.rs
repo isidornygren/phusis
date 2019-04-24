@@ -29,7 +29,6 @@ fn main() {
     println!("Testing with quad tree");
     let mut tot_us = 0;
     for _ in 0..ITERATIONS {
-
         let mut physics_world = PhysicsWorld::new();
         for _ in 0..BODIES {
             let x = rng.gen_range(36, 724) as f32;
@@ -38,7 +37,7 @@ fn main() {
             let new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
-                Box::new(Circle { radius: 8f32 }),
+                Box::new(Circle::new(8f32)),
                 Vector2::new(x, y),
                 false,
             ));
@@ -50,10 +49,19 @@ fn main() {
             tot_us += us_since_now;
         }
     }
-    println!("Finished testing quad tree after {} iterations & {} updates with {} bodies,\n results:", ITERATIONS, UPDATES, BODIES);
+    println!(
+        "Finished testing quad tree after {} iterations & {} updates with {} bodies,\n results:",
+        ITERATIONS, UPDATES, BODIES
+    );
     println!("====================================");
-    println!(" Avg:          {} μs", tot_us / (ITERATIONS * UPDATES) as u128);
-    println!(" Avg per body: {} μs", tot_us / (ITERATIONS * UPDATES * BODIES) as u128);
+    println!(
+        " Avg:          {} μs",
+        tot_us / (ITERATIONS * UPDATES) as u128
+    );
+    println!(
+        " Avg per body: {} μs",
+        tot_us / (ITERATIONS * UPDATES * BODIES) as u128
+    );
     println!(" Total:        {} μs", tot_us);
     println!("====================================");
 }

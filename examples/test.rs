@@ -52,7 +52,7 @@ impl GameState {
         let body = physics_world.add_body(Body::new(
             100f32,
             1f32,
-            Box::new(Circle { radius: 16f32 }),
+            Box::new(Circle::new(16f32)),
             Vector2::new(32f32, 256f32),
             false,
         ));
@@ -60,14 +60,14 @@ impl GameState {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..100 {
+        for _ in 0..2000 {
             let x = rng.gen_range(36, 724) as f32;
             let y = rng.gen_range(36, 524) as f32;
 
             let new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
-                Box::new(Circle { radius: 2f32 }),
+                Box::new(Circle::new(2f32)),
                 Vector2::new(x, y),
                 false,
             ));
@@ -102,7 +102,7 @@ impl EventHandler for GameState {
         graphics::clear(ctx);
 
         // draw the quad tree aabb
-        let qq_aabb = self.physics_world.get_quad_tree_aabb();
+        /* let qq_aabb = self.physics_world.get_quad_tree_aabb();
         for aabb in qq_aabb {
             let body_rect = aabb.get_rect();
             graphics::set_color(ctx, graphics::Color::new(0.0, 1.0, 0.0, 1.0)).unwrap();
@@ -112,7 +112,7 @@ impl EventHandler for GameState {
                 Rect::new(body_rect.0, body_rect.1, body_rect.2, body_rect.3),
             )
             .unwrap();
-        }
+        } */
 
         // canvas.set_draw_color(Color::RGB(255, 255, 255));
         for body in self.bodies.clone() {

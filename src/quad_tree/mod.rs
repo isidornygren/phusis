@@ -74,18 +74,20 @@ impl QuadTree {
      */
     pub fn clear(&mut self) {
         self.children.clear();
-        if let Some(nodes) = self.nodes.as_mut() {
+        /*if let Some(nodes) = self.nodes.as_mut() {
             for node in nodes.iter_mut() {
                 (*node).clear();
             }
-        }
+        }*/
         self.nodes = None;
     }
     /**
      * Splits a node into 4 subnodes
      */
     pub fn split(&mut self) {
-        assert!(self.nodes.is_none(), "Node already split");
+        if self.nodes.is_some() {
+            unreachable!();
+        }
         let sub_width = self.bounds.get_width() / 2f32;
         let sub_height = self.bounds.get_height() / 2f32;
 
