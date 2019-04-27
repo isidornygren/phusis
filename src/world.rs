@@ -48,7 +48,7 @@ fn correct_position(a: &mut Body, b: &mut Body, collision: &Collision) {
         return;
     }
     // High percentage = no penetration
-    let percent = 0.75;
+    let percent = 0.5;
     // Allows penetration without jittering
     let k_slop = 0.01;
 

@@ -1,9 +1,8 @@
-use nalgebra::Vector2;
+use nalgebra::{clamp, Vector2};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-// use physics::aabb::AABB;
 use crate::body::Body;
 use crate::collision::{Collision, Manifold};
 use crate::shape::{Circle, ShapeKind};
@@ -12,33 +11,41 @@ fn distance_squared(vec: &Vector2<f32>) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
 }
 
-/* pub fn aabb_vs_aabb(a: &AABB, b: &AABB) -> bool {
-    if a.max.x < b.min.y || a.min.x > b.max.x {
-        return false;
-    }
-    if a.max.y < b.min.y || a.min.y > b.max.y {
-        return false;
-    }
-    return true;
-} */
-
-/* pub fn circle_vs_circle(a: &Circle, b: &Circle) -> bool {
-    let r = (a.radius + b.radius).powf(2f32);
-    return r < (a.position.x + b.position.x).powf(2f32) + (a.position.y + b.position.y).powf(2f32);
-} */
-
 pub fn check_collision(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
     match (a.borrow().shape.get_kind(), b.borrow().shape.get_kind()) {
         (ShapeKind::Circle, ShapeKind::Circle) => circle_vs_circle(a, b),
-        (ShapeKind::AABB, ShapeKind::AABB) => {
-            unimplemented!();
-        }
-        (ShapeKind::Circle, ShapeKind::AABB) => {
-            unimplemented!();
-        }
-        (ShapeKind::AABB, ShapeKind::Circle) => {
-            unimplemented!();
-        }
+        (ShapeKind::AABB, ShapeKind::AABB) => aabb_vs_aabb(a, b),
+        (ShapeKind::Circle, ShapeKind::AABB) => aabb_vs_circle(b, a),
+        (ShapeKind::AABB, ShapeKind::Circle) => aabb_vs_circle(a, b),
+    }
+}
+
+pub fn aabb_vs_aabb(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
+    let a_borrowed = a.borrow();
+    let b_borrowed = b.borrow();
+
+    let pos_diff = b_borrowed.position - a_borrowed.position;
+
+    let penetration = (b_borrowed.get_aabb().half + a_borrowed.get_aabb().half) - pos_diff.abs();
+    if penetration.x <= 0f32 || penetration.y <= 0f32 {
+        return None;
+    }
+    if penetration.x < penetration.y {
+        let sign_x = pos_diff.x.signum();
+        return Some(Collision {
+            penetration_depth: penetration.x * sign_x,
+            normal: Vector2::new(sign_x, 0f32),
+            a: Rc::clone(a),
+            b: Rc::clone(b),
+        });
+    } else {
+        let sign_y = pos_diff.y.signum();
+        return Some(Collision {
+            penetration_depth: penetration.y * sign_y,
+            normal: Vector2::new(0f32, sign_y),
+            a: Rc::clone(a),
+            b: Rc::clone(b),
+        });
     }
 }
 
@@ -76,43 +83,64 @@ pub fn circle_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<
     }
 }
 
-/* pub fn AABB_vs_AABB_manifold(manifold: &Manifold<AABB, AABB>) -> Option<Collision> {
-    let normal = manifold.b.position - manifold.a.position;
+pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
+    let a_borrowed = a.borrow();
+    let b_borrowed = b.borrow();
 
-    let a_extent_x = (manifold.a.shape.max.x - manifold.b.shape.min.x) / 2f32;
-    let b_extent_x = (manifold.b.shape.max.x - manifold.a.shape.min.x) / 2f32;
+    let normal = b_borrowed.position - a_borrowed.position;
+    let mut closest = normal.clone();
 
-    let x_overlap = a_extent_x + b_extent_x - normal.x.abs();
-    if x_overlap > 0f32 {
-        let a_extent_y = (manifold.a.shape.max.y - manifold.b.shape.min.y) / 2f32;
-        let b_extent_y = (manifold.b.shape.max.y - manifold.a.shape.min.y) / 2f32;
+    let x_extent = a_borrowed.get_aabb().get_width() / 2f32;
+    let y_extent = a_borrowed.get_aabb().get_height() / 2f32;
 
-        let y_overlap = a_extent_y + b_extent_y - normal.y.abs();
-        if y_overlap > 0f32 {
-            if x_overlap < y_overlap {
-                return Some(Collision {
-                    normal: if normal.x < 0f32 {
-                        Vector2::new(-1f32, 0f32)
-                    } else {
-                        Vector2::new(1f32, 0f32)
-                    },
-                    penetration_depth: x_overlap,
-                });
+    closest.x = clamp(closest.x, -x_extent, x_extent);
+    closest.y = clamp(closest.y, -y_extent, y_extent);
+
+    let mut inside = false;
+
+    // Circle is inside the AABB
+    if normal == closest {
+        inside = true;
+        // finds the closest axis
+        if normal.x.abs() > normal.y.abs() {
+            if closest.x > 0f32 {
+                closest.x = x_extent;
             } else {
-                return Some(Collision {
-                    normal: if normal.y < 0f32 {
-                        Vector2::new(0f32, -1f32)
-                    } else {
-                        Vector2::new(0f32, 1f32)
-                    },
-                    penetration_depth: x_overlap,
-                });
+                closest.x = -x_extent;
+            }
+        } else {
+            if closest.y > 0f32 {
+                closest.y = y_extent;
+            } else {
+                closest.y = -y_extent;
             }
         }
     }
-    return None;
-}
 
-pub fn AABB_vs_circle(manifold: &Manifold<AABB, Circle>) -> Option<Collision> {
-    unimplemented!();
-} */
+    let distance = distance_squared(&(normal - closest));
+    let radius = b_borrowed.shape.get_radius();
+
+    // Return none if radius is shorter than distance to closest
+    // point and circle not inside AABB
+    if distance > (radius * radius) && !inside {
+        return None;
+    }
+
+    let distance_sqr = distance.sqrt();
+
+    if inside {
+        return Some(Collision {
+            penetration_depth: (radius - distance_sqr),
+            normal: normal / radius,
+            a: Rc::clone(a),
+            b: Rc::clone(b),
+        });
+    } else {
+        return Some(Collision {
+            penetration_depth: (radius - distance_sqr),
+            normal: normal / distance,
+            a: Rc::clone(a),
+            b: Rc::clone(b),
+        });
+    }
+}

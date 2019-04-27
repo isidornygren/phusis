@@ -12,10 +12,7 @@ impl Circle {
         // A circles aabb is centered around 0
         return Circle {
             radius,
-            aabb: AABB {
-                min: Vector2::new(-radius, -radius),
-                max: Vector2::new(radius, radius),
-            },
+            aabb: AABB::new(-radius, -radius, radius * 2f32, radius * 2f32),
         };
     }
 }
@@ -28,8 +25,6 @@ impl Shape for Circle {
         return self.radius;
     }
     fn get_aabb(&self) -> AABB {
-        // TODO: Maybe store this as an object in circle instead of always
-        // constructing it here.
         return self.aabb;
     }
 }

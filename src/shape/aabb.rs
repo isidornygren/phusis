@@ -1,3 +1,4 @@
+use crate::shape::{Shape, ShapeKind};
 use nalgebra::Vector2;
 use std::ops::Add;
 
@@ -5,6 +6,7 @@ use std::ops::Add;
 pub struct AABB {
     pub min: Vector2<f32>,
     pub max: Vector2<f32>,
+    pub half: Vector2<f32>,
 }
 
 impl AABB {
@@ -12,6 +14,7 @@ impl AABB {
         return AABB {
             min: Vector2::new(x, y),
             max: Vector2::new(x + width, y + height),
+            half: Vector2::new(width / 2f32, height / 2f32),
         };
     }
     pub fn get_rect(&self) -> (f32, f32, f32, f32) {
@@ -35,10 +38,10 @@ impl AABB {
         self.min.y
     }
     pub fn get_vertical_mid(&self) -> f32 {
-        self.min.y + self.get_height() / 2f32
+        self.min.y + self.half.y
     }
     pub fn get_horizontal_mid(&self) -> f32 {
-        self.min.x + self.get_width() / 2f32
+        self.min.x + self.half.x
     }
     /**
      * is strictly within another AABB
@@ -57,6 +60,25 @@ impl Add<Vector2<f32>> for AABB {
         AABB {
             min: self.min + rhs,
             max: self.max + rhs,
+            half: self.half,
         }
+    }
+}
+
+impl Shape for AABB {
+    fn get_kind(&self) -> ShapeKind {
+        return ShapeKind::AABB;
+    }
+    fn get_radius(&self) -> f32 {
+        let height = self.get_height();
+        let width = self.get_width();
+        if width > height {
+            return width / 2f32;
+        } else {
+            return height / 2f32;
+        }
+    }
+    fn get_aabb(&self) -> AABB {
+        return self.clone();
     }
 }

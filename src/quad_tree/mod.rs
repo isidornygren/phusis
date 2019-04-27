@@ -168,6 +168,7 @@ impl QuadTree {
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
                 nodes_children.extend(node.get_children());
+                // nodes_children.extend(node.get_node_children());
             }
         }
         return nodes_children;

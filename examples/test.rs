@@ -2,7 +2,7 @@ extern crate phusis;
 extern crate stopwatch;
 
 use phusis::body::Body;
-use phusis::shape::Circle;
+use phusis::shape::{Circle, ShapeKind, AABB};
 use phusis::world::PhysicsWorld;
 
 use ggez::event::{self, EventHandler};
@@ -52,7 +52,7 @@ impl GameState {
         let body = physics_world.add_body(Body::new(
             100f32,
             1f32,
-            Box::new(Circle::new(16f32)),
+            Box::new(AABB::new(0f32, 0f32, 20f32, 20f32)),
             Vector2::new(32f32, 256f32),
             false,
         ));
@@ -60,14 +60,14 @@ impl GameState {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..2000 {
+        for _ in 0..100 {
             let x = rng.gen_range(36, 724) as f32;
             let y = rng.gen_range(36, 524) as f32;
 
             let new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
-                Box::new(Circle::new(2f32)),
+                Box::new(Circle::new(10f32)),
                 Vector2::new(x, y),
                 false,
             ));
@@ -126,16 +126,34 @@ impl EventHandler for GameState {
                 Rect::new(body_rect.0, body_rect.1, body_rect.2, body_rect.3),
             )
             .unwrap();*/
-            // draw a circle
-            graphics::set_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0)).unwrap();
-            graphics::circle(
-                ctx,
-                graphics::DrawMode::Line(2f32),
-                graphics::Point2::new(borrowed_body.position.x, borrowed_body.position.y),
-                borrowed_body.shape.get_radius(),
-                0.5f32,
-            )
-            .unwrap();
+            match borrowed_body.shape.get_kind() {
+                ShapeKind::Circle => {
+                    graphics::set_color(ctx, graphics::Color::new(0.0, 1.0, 1.0, 1.0)).unwrap();
+                    graphics::circle(
+                        ctx,
+                        graphics::DrawMode::Line(2f32),
+                        graphics::Point2::new(borrowed_body.position.x, borrowed_body.position.y),
+                        borrowed_body.shape.get_radius(),
+                        0.5f32,
+                    )
+                    .unwrap();
+                }
+                ShapeKind::AABB => {
+                    graphics::set_color(ctx, graphics::Color::new(0.0, 1.0, 0.0, 1.0)).unwrap();
+                    let body_rect = borrowed_body.get_aabb().get_rect();
+                    graphics::rectangle(
+                        ctx,
+                        graphics::DrawMode::Line(1f32),
+                        Rect::new(
+                            body_rect.0 - body_rect.2 / 2f32,
+                            body_rect.1 - body_rect.3 / 2f32,
+                            body_rect.2,
+                            body_rect.3,
+                        ),
+                    )
+                    .unwrap();
+                }
+            }
         }
         graphics::present(ctx);
         Ok(())
