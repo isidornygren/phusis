@@ -5,10 +5,10 @@ use phusis::body::Body;
 use phusis::shape::{Circle, ShapeKind, AABB};
 use phusis::world::PhysicsWorld;
 
-use ggez::event::{self, EventHandler};
-use ggez::{graphics, graphics::Rect, mouse, timer, Context, ContextBuilder, GameResult};
+// use ggez::event::{self, EventHandler};
+// use ggez::{graphics, graphics::Rect, mouse, timer, Context, ContextBuilder, GameResult};
 
-use nalgebra::Vector2;
+use bevy::prelude::Vec2;
 
 use rand::prelude::*;
 
@@ -53,7 +53,7 @@ impl GameState {
             100f32,
             1f32,
             Box::new(AABB::new(0f32, 0f32, 20f32, 20f32)),
-            Vector2::new(32f32, 256f32),
+            Vec2::new(32f32, 256f32),
             false,
         ));
         bodies.push(body);
@@ -61,14 +61,14 @@ impl GameState {
         let mut rng = rand::thread_rng();
 
         for _ in 0..100 {
-            let x = rng.gen_range(36, 724) as f32;
-            let y = rng.gen_range(36, 524) as f32;
+            let x = rng.gen_range(36..724) as f32;
+            let y = rng.gen_range(36..524) as f32;
 
             let new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
                 Box::new(Circle::new(10f32)),
-                Vector2::new(x, y),
+                Vec2::new(x, y),
                 false,
             ));
             bodies.push(new_body);
@@ -87,7 +87,7 @@ impl EventHandler for GameState {
 
         // Update first body to mouse position
         let mouse_pos = mouse::get_position(ctx).unwrap();
-        let mouse_vec = Vector2::new(mouse_pos.x, mouse_pos.y);
+        let mouse_vec = Vec2::new(mouse_pos.x, mouse_pos.y);
         let vec_diff = mouse_vec - self.bodies[0].borrow().position;
         self.bodies[0].borrow_mut().velocity = vec_diff;
 

@@ -1,20 +1,20 @@
 use crate::shape::{Shape, ShapeKind};
-use nalgebra::Vector2;
+use crate::Vec2;
 use std::ops::Add;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct AABB {
-    pub min: Vector2<f32>,
-    pub max: Vector2<f32>,
-    pub half: Vector2<f32>,
+    pub min: Vec2,
+    pub max: Vec2,
+    pub half: Vec2,
 }
 
 impl AABB {
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
         return AABB {
-            min: Vector2::new(x, y),
-            max: Vector2::new(x + width, y + height),
-            half: Vector2::new(width / 2f32, height / 2f32),
+            min: Vec2::new(x, y),
+            max: Vec2::new(x + width, y + height),
+            half: Vec2::new(width / 2f32, height / 2f32),
         };
     }
     pub fn get_rect(&self) -> (f32, f32, f32, f32) {
@@ -54,12 +54,12 @@ impl AABB {
     }
 }
 
-impl Add<Vector2<f32>> for AABB {
+impl Add<&Vec2> for AABB {
     type Output = Self;
-    fn add(self, rhs: Vector2<f32>) -> AABB {
+    fn add(self, other: &Vec2) -> AABB {
         AABB {
-            min: self.min + rhs,
-            max: self.max + rhs,
+            min: self.min + other,
+            max: self.max + other,
             half: self.half,
         }
     }

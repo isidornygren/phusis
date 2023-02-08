@@ -1,13 +1,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use nalgebra::Vector2;
-
 use crate::body::Body;
 use crate::checks::check_collision;
 use crate::collision::Collision;
 use crate::quad_tree;
 use crate::shape::{Circle, Shape, AABB};
+use crate::Vec2;
 
 /**
  * Sets velocity in m/s
@@ -16,7 +15,7 @@ fn resolve_collision(a: &mut Body, b: &mut Body, collision: &Collision) {
     if a.fixed && b.fixed {
         return;
     }
-    let relative_velocity = b.velocity - a.velocity;
+    let relative_velocity = &b.velocity - &a.velocity;
     let velocity_along_normal = relative_velocity.dot(&collision.normal);
 
     if velocity_along_normal > 0f32 {
@@ -33,13 +32,13 @@ fn resolve_collision(a: &mut Body, b: &mut Body, collision: &Collision) {
         _ => impulse, // this will never happen
     };
 
-    let impulse_vector = impulse * collision.normal;
+    let impulse_vector = impulse * &collision.normal;
 
     if !a.fixed {
-        a.velocity -= a.inv_mass * impulse_vector;
+        a.velocity -= a.inv_mass * &impulse_vector;
     }
     if !b.fixed {
-        b.velocity += b.inv_mass * impulse_vector;
+        b.velocity += b.inv_mass * &impulse_vector;
     }
 }
 
@@ -62,12 +61,12 @@ fn correct_position(a: &mut Body, b: &mut Body, collision: &Collision) {
         maximum / (a.inv_mass + b.inv_mass) * percent
     };
 
-    let correction = collision.normal * correction_scalar;
+    let correction = &collision.normal * correction_scalar;
     if !a.fixed {
-        a.position -= a.inv_mass * correction;
+        a.position -= a.inv_mass * &correction;
     }
     if !b.fixed {
-        b.position += b.inv_mass * correction;
+        b.position += b.inv_mass * &correction;
     }
 }
 
@@ -99,21 +98,21 @@ impl PhysicsWorld {
             // Apply force in body
             // TODO: Fix force code
             // this is not really using any fancy physics, it's just me
-            let linear_acceleration = body_mut.force / body_mut.mass;
-            body_mut.velocity = body_mut.velocity + linear_acceleration * dt;
+            let linear_acceleration = &body_mut.force / body_mut.mass;
+            body_mut.velocity = &body_mut.velocity + linear_acceleration * dt;
             // Force has been applied, reset it in body
-            body_mut.force = Vector2::new(0f32, 0f32);
+            body_mut.force = Vec2::new(0f32, 0f32);
 
             // Apply friction based on surface
             // TODO: check surface friction
-            let friction_val = (body_mut.friction * body_mut.velocity) * dt;
+            let friction_val = (body_mut.friction * &body_mut.velocity) * dt;
             body_mut.velocity -= friction_val;
 
-            if body_mut.velocity.abs() < Vector2::new(0.1, 0.1) {
-                body_mut.velocity = Vector2::new(0f32, 0f32);
+            if body_mut.velocity.abs() < Vec2::new(0.1, 0.1) {
+                body_mut.velocity = Vec2::new(0f32, 0f32);
             }
 
-            body_mut.position = body_mut.position + body_mut.velocity * dt;
+            body_mut.position = &body_mut.position + &body_mut.velocity * dt;
         }
     }
     pub fn update_with_quad(&mut self, dt: f32) {

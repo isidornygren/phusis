@@ -1,14 +1,9 @@
 extern crate phusis;
 extern crate stopwatch;
 
-use phusis::body::Body;
 use phusis::shape::Circle;
 use phusis::world::PhysicsWorld;
-
-use ggez::event::{self, EventHandler};
-use ggez::{graphics, graphics::Rect, mouse, timer, Context, ContextBuilder, GameResult};
-
-use nalgebra::Vector2;
+use phusis::{body::Body, Vec2};
 
 use rand::prelude::*;
 
@@ -19,8 +14,8 @@ use std::time::{Duration, Instant};
 const S_PER_UPDATE: f32 = 1f32 / 60f32;
 
 const ITERATIONS: u32 = 100;
-const UPDATES: u32 = 100;
-const BODIES: u32 = 20;
+const UPDATES: u32 = 1000;
+const BODIES: u32 = 200;
 
 fn main() {
     let mut rng = rand::thread_rng();
@@ -31,14 +26,14 @@ fn main() {
     for _ in 0..ITERATIONS {
         let mut physics_world = PhysicsWorld::new();
         for _ in 0..BODIES {
-            let x = rng.gen_range(36, 724) as f32;
-            let y = rng.gen_range(36, 524) as f32;
+            let x = rng.gen_range(36..724) as f32;
+            let y = rng.gen_range(36..524) as f32;
 
             let new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
                 Box::new(Circle::new(8f32)),
-                Vector2::new(x, y),
+                Vec2::new(x, y),
                 false,
             ));
         }

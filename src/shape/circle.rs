@@ -1,7 +1,6 @@
 use crate::shape::{Shape, ShapeKind, AABB};
-use nalgebra::Vector2;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Circle {
     pub radius: f32,
     aabb: AABB,
@@ -25,6 +24,6 @@ impl Shape for Circle {
         return self.radius;
     }
     fn get_aabb(&self) -> AABB {
-        return self.aabb;
+        return self.aabb.clone();
     }
 }

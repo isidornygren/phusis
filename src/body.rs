@@ -2,15 +2,15 @@ use crate::checks::circle_vs_circle;
 use crate::collision::Collision;
 use crate::shape::{Circle, Shape, ShapeKind, AABB};
 
-use nalgebra::Vector2;
+use crate::Vec2;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Body {
-    pub position: Vector2<f32>,
-    pub velocity: Vector2<f32>,
-    pub force: Vector2<f32>, // TODO: is this needed
+    pub position: Vec2,
+    pub velocity: Vec2,
+    pub force: Vec2, // TODO: is this needed
     // pub acceleration: f32,
     pub mass: f32,
     pub inv_mass: f32, // 1 / mass
@@ -25,7 +25,7 @@ impl Body {
         mass: f32,
         restitution: f32,
         shape: Box<Shape>,
-        position: Vector2<f32>,
+        position: Vec2,
         fixed: bool,
     ) -> Self {
         return Body {
@@ -33,8 +33,8 @@ impl Body {
             restitution,
             inv_mass: 1f32 / mass,
             position,
-            velocity: Vector2::new(0f32, 0f32),
-            force: Vector2::new(0f32, 0f32),
+            velocity: Vec2::new(0f32, 0f32),
+            force: Vec2::new(0f32, 0f32),
             shape,
             friction: 5f32,
             fixed,
@@ -42,10 +42,10 @@ impl Body {
     }
 
     pub fn get_aabb(&self) -> AABB {
-        self.shape.get_aabb() + self.position
+        self.shape.get_aabb() + &self.position
     }
 
-    /*pub fn apply_force(&mut self, force: Vector2<f32>) {
+    /*pub fn apply_force(&mut self, force: Vec2) {
         // self.force += force;
         self.force += force;
         // self.velocity = force * self.inv_mass * dt;

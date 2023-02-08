@@ -2,7 +2,7 @@ use crate::body::Body;
 use crate::checks::check_collision;
 use crate::collision::Collision;
 use crate::shape::AABB;
-use nalgebra::Vector2;
+use crate::Vec2;
 
 use std::cell::RefCell;
 use std::rc::Rc;

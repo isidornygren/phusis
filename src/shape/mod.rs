@@ -1,12 +1,11 @@
-use nalgebra::Vector2;
-
+use crate::Vec2;
 pub mod aabb;
 mod circle;
 
 pub use aabb::AABB;
 pub use circle::Circle;
 
-fn distance_squared(vec: &Vector2<f32>) -> f32 {
+fn distance_squared(vec: &Vec2) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
 }
 
