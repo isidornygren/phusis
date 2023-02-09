@@ -7,11 +7,12 @@ pub struct Circle {
 }
 
 impl Circle {
-    #[must_use] pub fn new(radius: f32) -> Self {
+    #[must_use]
+    pub fn new(radius: f32) -> Self {
         // A circles aabb is centered around 0
         Circle {
             radius,
-            aabb: AABB::new(-radius, -radius, radius * 2f32, radius * 2f32),
+            aabb: AABB::new(-radius, -radius, radius * 2.0, radius * 2.0),
         }
     }
 }

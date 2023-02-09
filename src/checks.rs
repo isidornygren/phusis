@@ -86,13 +86,14 @@ pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Co
     let b_borrowed = b.borrow();
 
     let normal = &b_borrowed.position - &a_borrowed.position;
-    let mut closest = normal.clone();
 
     let x_extent = a_borrowed.get_aabb().get_width() / 2f32;
     let y_extent = a_borrowed.get_aabb().get_height() / 2f32;
 
-    closest.x = f32::clamp(closest.x, -x_extent, x_extent);
-    closest.y = f32::clamp(closest.y, -y_extent, y_extent);
+    let mut closest = Vec2::new(
+        f32::clamp(normal.x, -x_extent, x_extent),
+        f32::clamp(normal.y, -y_extent, y_extent),
+    );
 
     let mut inside = false;
 

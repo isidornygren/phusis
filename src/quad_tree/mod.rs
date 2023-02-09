@@ -19,7 +19,6 @@ enum QuadCorner {
 type WrappedBody = Rc<RefCell<Body>>;
 
 /**
- * TODO: Set children to a fixed array as max children will be a small number
  * TODO: AABB should be integer based here
  */
 
@@ -35,7 +34,7 @@ impl QuadTree {
         QuadTree {
             bounds,
             level,
-            children: vec![],
+            children: Vec::with_capacity(MAX_CHILDREN),
             nodes: None,
         }
     }

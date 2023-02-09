@@ -8,7 +8,7 @@ use phusis::world::PhysicsWorld;
 // use ggez::event::{self, EventHandler};
 // use ggez::{graphics, graphics::Rect, mouse, timer, Context, ContextBuilder, GameResult};
 
-use bevy::prelude::Vec2;
+use bevy::prelude::*;
 
 use rand::prelude::*;
 
@@ -16,25 +16,32 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-const NS_PER_UPDATE: f32 = 1_000_000_000_f32 / 60f32;
+#[derive(Resource)]
+struct PhysicsWorldResource {
+    physics_world: PhysicsWorld,
+}
 
 fn main() {
-    // setup ggez
-    let ctx = &mut ContextBuilder::new("Phusis test", "Isidor Nygren")
-        .build()
-        .expect("aieee, could not create ggez context!");
+    let physics_world = PhysicsWorld::default();
+    let mut bodies: Vec<Rc<RefCell<Body>>> = vec![];
 
-    // Create an instance of your event handler.
-    // Usually, you should provide it with the Context object to
-    // use when setting your game up.
-    // graphics::set_background_color(ctx, graphics::Color::new(1.0,0.0,1.0,1.0));
-    let mut my_game = GameState::new(ctx).unwrap();
+    for _ in 0..100 {
+        let x = rng.gen_range(36..724) as f32;
+        let y = rng.gen_range(36..524) as f32;
 
-    // Run!
-    match event::run(ctx, &mut my_game) {
-        Ok(_) => println!("Exited cleanly."),
-        Err(e) => println!("Error occured: {}", e),
+        let new_body = physics_world.add_body(Body::new(
+            1f32,
+            1f32,
+            Box::new(Circle::new(10f32)),
+            Vec2::new(x, y),
+            false,
+        ));
+        bodies.push(new_body);
     }
+
+    App::new()
+        .insert_resource(PhysicsWorldResource { physics_world })
+        .run();
 }
 
 struct GameState {
