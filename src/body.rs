@@ -1,11 +1,11 @@
-use crate::checks::circle_vs_circle;
-use crate::collision::Collision;
-use crate::shape::{Circle, Shape, ShapeKind, AABB};
+
+
+use crate::shape::{Shape, AABB};
 
 use crate::Vec2;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+
+
 
 pub struct Body {
     pub position: Vec2,
@@ -15,20 +15,20 @@ pub struct Body {
     pub mass: f32,
     pub inv_mass: f32, // 1 / mass
     pub restitution: f32,
-    pub shape: Box<Shape>,
+    pub shape: Box<dyn Shape>,
     pub friction: f32,
     pub fixed: bool,
 }
 
 impl Body {
-    pub fn new(
+    #[must_use] pub fn new(
         mass: f32,
         restitution: f32,
-        shape: Box<Shape>,
+        shape: Box<dyn Shape>,
         position: Vec2,
         fixed: bool,
     ) -> Self {
-        return Body {
+        Body {
             mass,
             restitution,
             inv_mass: 1f32 / mass,
@@ -38,10 +38,10 @@ impl Body {
             shape,
             friction: 5f32,
             fixed,
-        };
+        }
     }
 
-    pub fn get_aabb(&self) -> AABB {
+    #[must_use] pub fn get_aabb(&self) -> AABB {
         self.shape.get_aabb() + &self.position
     }
 

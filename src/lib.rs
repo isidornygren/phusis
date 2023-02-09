@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 pub mod body;
 mod checks;
 mod collision;

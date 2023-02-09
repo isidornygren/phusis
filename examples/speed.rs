@@ -7,9 +7,7 @@ use phusis::{body::Body, Vec2};
 
 use rand::prelude::*;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const S_PER_UPDATE: f32 = 1f32 / 60f32;
 
@@ -24,12 +22,12 @@ fn main() {
     println!("Testing with quad tree");
     let mut tot_us = 0;
     for _ in 0..ITERATIONS {
-        let mut physics_world = PhysicsWorld::new();
+        let mut physics_world = PhysicsWorld::default();
         for _ in 0..BODIES {
             let x = rng.gen_range(36..724) as f32;
             let y = rng.gen_range(36..524) as f32;
 
-            let new_body = physics_world.add_body(Body::new(
+            let _new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
                 Box::new(Circle::new(8f32)),

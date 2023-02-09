@@ -4,8 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::body::Body;
-use crate::collision::{Collision, Manifold};
-use crate::shape::{Circle, ShapeKind};
+use crate::collision::Collision;
+use crate::shape::ShapeKind;
 
 fn distance_squared(vec: &Vec2) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
@@ -38,15 +38,14 @@ pub fn aabb_vs_aabb(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Coll
             a: Rc::clone(a),
             b: Rc::clone(b),
         });
-    } else {
-        let sign_y = pos_diff.y.signum();
-        return Some(Collision {
-            penetration_depth: penetration.y * sign_y,
-            normal: Vec2::new(0f32, sign_y),
-            a: Rc::clone(a),
-            b: Rc::clone(b),
-        });
     }
+    let sign_y = pos_diff.y.signum();
+    Some(Collision {
+        penetration_depth: penetration.y * sign_y,
+        normal: Vec2::new(0f32, sign_y),
+        a: Rc::clone(a),
+        b: Rc::clone(b),
+    })
 }
 
 pub fn circle_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
@@ -71,16 +70,15 @@ pub fn circle_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<
             a: Rc::clone(a),
             b: Rc::clone(b),
         });
-    } else {
-        // Circles are on the same position
-        // Choose random (but consistent) values
-        return Some(Collision {
-            penetration_depth: a_borrowed.shape.get_radius(),
-            normal: Vec2::new(1f32, 0f32),
-            a: Rc::clone(a),
-            b: Rc::clone(b),
-        });
     }
+    // Circles are on the same position
+    // Choose random (but consistent) values
+    Some(Collision {
+        penetration_depth: a_borrowed.shape.get_radius(),
+        normal: Vec2::new(1f32, 0f32),
+        a: Rc::clone(a),
+        b: Rc::clone(b),
+    })
 }
 
 pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
@@ -108,12 +106,10 @@ pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Co
             } else {
                 closest.x = -x_extent;
             }
+        } else if closest.y > 0f32 {
+            closest.y = y_extent;
         } else {
-            if closest.y > 0f32 {
-                closest.y = y_extent;
-            } else {
-                closest.y = -y_extent;
-            }
+            closest.y = -y_extent;
         }
     }
 
@@ -129,18 +125,18 @@ pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Co
     let distance_sqr = distance.sqrt();
 
     if inside {
-        return Some(Collision {
+        Some(Collision {
             penetration_depth: (radius - distance_sqr),
             normal: &normal / radius,
             a: Rc::clone(a),
             b: Rc::clone(b),
-        });
+        })
     } else {
-        return Some(Collision {
+        Some(Collision {
             penetration_depth: (radius - distance_sqr),
             normal: &normal / distance,
             a: Rc::clone(a),
             b: Rc::clone(b),
-        });
+        })
     }
 }

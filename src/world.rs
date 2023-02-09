@@ -5,7 +5,7 @@ use crate::body::Body;
 use crate::checks::check_collision;
 use crate::collision::Collision;
 use crate::quad_tree;
-use crate::shape::{Circle, Shape, AABB};
+use crate::shape::AABB;
 use crate::Vec2;
 
 /**
@@ -75,29 +75,34 @@ pub struct PhysicsWorld {
     quad_tree: quad_tree::QuadTree,
 }
 
-impl PhysicsWorld {
-    pub fn new() -> Self {
-        return PhysicsWorld {
+impl Default for PhysicsWorld {
+    fn default() -> Self {
+        Self {
             bodies: vec![],
             quad_tree: quad_tree::QuadTree::new(0, AABB::new(-100f32, -100f32, 1000f32, 1000f32)),
-        };
+        }
     }
+}
+
+impl PhysicsWorld {
     pub fn add_body(&mut self, body: Body) -> Rc<RefCell<Body>> {
         let body_ref = Rc::new(RefCell::new(body));
         self.bodies.push(Rc::clone(&body_ref));
-        return body_ref;
+        body_ref
     }
-    pub fn remove_body(&mut self, body: Body) {
+
+    pub fn remove_body(&mut self, _body: Body) {
         unimplemented!();
     }
+
     fn calc_velocity(&mut self, dt: f32) {
         // Update position of bodies based on velocity
-        for body in self.bodies.iter() {
+        for body in &self.bodies {
             let mut body_mut = body.borrow_mut();
 
             // Apply force in body
             // TODO: Fix force code
-            // this is not really using any fancy physics, it's just me
+            // this is not really using any fancy physics, it's just me (???!!!)
             let linear_acceleration = &body_mut.force / body_mut.mass;
             body_mut.velocity = &body_mut.velocity + linear_acceleration * dt;
             // Force has been applied, reset it in body
@@ -115,10 +120,11 @@ impl PhysicsWorld {
             body_mut.position = &body_mut.position + &body_mut.velocity * dt;
         }
     }
+
     pub fn update_with_quad(&mut self, dt: f32) {
         self.calc_velocity(dt);
         self.quad_tree.clear();
-        for body in self.bodies.iter() {
+        for body in &self.bodies {
             self.quad_tree.insert(Rc::clone(body));
         }
         let collisions = self.quad_tree.check_collisions();
@@ -135,21 +141,22 @@ impl PhysicsWorld {
             );
         }
     }
+
+    #[must_use]
     pub fn get_quad_tree_aabb(&self) -> Vec<AABB> {
-        return self.quad_tree.get_node_aabb();
+        self.quad_tree.get_node_aabb()
     }
+
     pub fn update(&mut self, dt: f32) {
         self.calc_velocity(dt);
         // Resolve collision for body pairs
         for (i, a) in self.bodies.iter().enumerate() {
             for b in &self.bodies[(i + 1)..] {
-                let resolution = check_collision(&a, &b);
-                match resolution {
-                    Some(collision) => {
-                        resolve_collision(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
-                        correct_position(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
-                    }
-                    None => {}
+                // The collision checking stage can definitely be parallelised (probably)
+                let resolution = check_collision(a, b);
+                if let Some(collision) = resolution {
+                    resolve_collision(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
+                    correct_position(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
                 }
             }
         }
