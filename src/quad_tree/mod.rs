@@ -3,11 +3,10 @@ use crate::checks::check_collision;
 use crate::collision::Collision;
 use crate::shape::AABB;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 const MAX_DEPTH: u8 = 8;
-const MAX_CHILDREN: usize = 10;
+const MAX_CHILDREN: usize = 16;
 
 enum QuadCorner {
     TopLeft = 0,
@@ -16,7 +15,7 @@ enum QuadCorner {
     BottomRight,
 }
 
-type WrappedBody = Rc<RefCell<Body>>;
+pub type WrappedBody = Arc<Mutex<Body>>;
 
 /**
  * TODO: AABB should be integer based here
@@ -41,8 +40,8 @@ impl QuadTree {
     /**
      * Inserts an items into the quad tree
      */
-    pub fn insert(&mut self, body: Rc<RefCell<Body>>) {
-        let index = self.get_index(&body.borrow().get_aabb());
+    pub fn insert(&mut self, body: WrappedBody) {
+        let index = self.get_index(&body.lock().unwrap().get_aabb());
         if let (Some(nodes), Some(i)) = (&mut self.nodes, index) {
             nodes[i].insert(body);
             return;
@@ -54,7 +53,7 @@ impl QuadTree {
             }
             let mut i = 0;
             while i < self.children.len() {
-                let aabb = self.children[i].borrow().get_aabb();
+                let aabb = self.children[i].lock().unwrap().get_aabb();
                 match self.get_index(&aabb) {
                     Some(j) => {
                         self.nodes.as_mut().unwrap()[j].insert(self.children.remove(i));
@@ -135,7 +134,7 @@ impl QuadTree {
      * Retrieves all items in the same node as the specified item, if the specified item
      * overlaps the bounds of a node, then all nodes from the parent node will be retrieved
      */
-    pub fn retrieve(&self, item: AABB) -> Vec<Rc<RefCell<Body>>> {
+    pub fn retrieve(&self, item: AABB) -> Vec<WrappedBody> {
         let _index = self.get_index(&item);
         if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
             nodes[i].retrieve(item)
@@ -145,13 +144,13 @@ impl QuadTree {
         }
     }
 
-    pub fn get_children(&self) -> Vec<Rc<RefCell<Body>>> {
+    pub fn get_children(&self) -> Vec<WrappedBody> {
         let mut nodes_children = self.get_node_children();
         nodes_children.extend(self.children.clone());
         nodes_children
     }
 
-    pub fn get_node_children(&self) -> Vec<Rc<RefCell<Body>>> {
+    pub fn get_node_children(&self) -> Vec<WrappedBody> {
         let mut nodes_children = vec![];
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
@@ -169,11 +168,13 @@ impl QuadTree {
         let sub_children = self.get_node_children();
         // check for collision within its children and the
         // sub children
-        for (i, a) in self.children.iter().enumerate() {
+        for (a_index, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
-            for b in &self.children[(i + 1)..] {
-                if let Some(collision) = check_collision(a, b) {
-                    collisions.push(collision);
+            for (b_index, b) in self.children.iter().enumerate() {
+                if (b_index != a_index) {
+                    if let Some(collision) = check_collision(a, b) {
+                        collisions.push(collision);
+                    }
                 }
             }
             // check for collisions with sub children

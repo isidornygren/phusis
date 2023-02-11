@@ -1,7 +1,7 @@
 extern crate phusis;
 extern crate stopwatch;
 
-use phusis::shape::Circle;
+use phusis::shape::{Circle, Shape};
 use phusis::world::PhysicsWorld;
 use phusis::{body::Body, Vec2};
 
@@ -30,7 +30,7 @@ fn main() {
             let _new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
-                Box::new(Circle::new(8f32)),
+                Shape::Circle(Circle::new(8f32)),
                 Vec2::new(x, y),
                 false,
             ));

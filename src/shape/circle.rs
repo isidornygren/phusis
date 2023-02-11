@@ -1,4 +1,4 @@
-use crate::shape::{Shape, ShapeKind, AABB};
+use crate::shape::AABB;
 
 #[derive(Debug, Clone)]
 pub struct Circle {
@@ -17,14 +17,11 @@ impl Circle {
     }
 }
 
-impl Shape for Circle {
-    fn get_kind(&self) -> ShapeKind {
-        ShapeKind::Circle
-    }
-    fn get_radius(&self) -> f32 {
+impl Circle {
+    pub fn get_radius(&self) -> f32 {
         self.radius
     }
-    fn get_aabb(&self) -> AABB {
+    pub fn get_aabb(&self) -> AABB {
         self.aabb.clone()
     }
 }

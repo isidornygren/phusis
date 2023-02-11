@@ -1,14 +1,14 @@
+use crate::quad_tree::WrappedBody;
+use crate::world::BodyHandle;
 use crate::Vec2;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use crate::body::Body;
 
 pub struct Collision {
     pub penetration_depth: f32,
     pub normal: Vec2,
-    pub a: Rc<RefCell<Body>>,
-    pub b: Rc<RefCell<Body>>,
+    pub a: WrappedBody,
+    pub b: WrappedBody,
 }
 
 pub struct Manifold {

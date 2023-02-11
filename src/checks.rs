@@ -1,32 +1,45 @@
+use crate::quad_tree::WrappedBody;
+use crate::world::BodyHandle;
 use crate::Vec2;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::body::Body;
 use crate::collision::Collision;
-use crate::shape::ShapeKind;
+use crate::shape::{Circle, Shape, AABB};
 
 fn distance_squared(vec: &Vec2) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
 }
 
-pub fn check_collision(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
-    match (a.borrow().shape.get_kind(), b.borrow().shape.get_kind()) {
-        (ShapeKind::Circle, ShapeKind::Circle) => circle_vs_circle(a, b),
-        (ShapeKind::AABB, ShapeKind::AABB) => aabb_vs_aabb(a, b),
-        (ShapeKind::Circle, ShapeKind::AABB) => aabb_vs_circle(b, a),
-        (ShapeKind::AABB, ShapeKind::Circle) => aabb_vs_circle(a, b),
+pub fn check_collision(a: &WrappedBody, b: &WrappedBody) -> Option<Collision> {
+    let a_shape = &a.lock().unwrap().shape.clone();
+    let b_shape = &b.lock().unwrap().shape.clone();
+
+    match (a_shape, b_shape) {
+        (Shape::Circle(a_circle), Shape::Circle(b_circle)) => {
+            circle_vs_circle(a, b, a_circle, b_circle)
+        }
+        (Shape::AABB(a_aabb), Shape::AABB(b_aabb)) => aabb_vs_aabb(a, b, a_aabb, b_aabb),
+        (Shape::Circle(circle), Shape::AABB(aabb)) => aabb_vs_circle(b, a, aabb, circle),
+        (Shape::AABB(aabb), Shape::Circle(circle)) => aabb_vs_circle(a, b, aabb, circle),
     }
 }
 
-pub fn aabb_vs_aabb(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
-    let a_borrowed = a.borrow();
-    let b_borrowed = b.borrow();
+pub fn aabb_vs_aabb(
+    a_mutex: &WrappedBody,
+    b_mutex: &WrappedBody,
+    a_aabb: &AABB,
+    b_aabb: &AABB,
+) -> Option<Collision> {
+    let a = a_mutex.lock().unwrap();
+    let b = b_mutex.lock().unwrap();
 
-    let pos_diff = &b_borrowed.position - &a_borrowed.position;
+    let pos_diff = &b.position - &a.position;
 
-    let penetration = (b_borrowed.get_aabb().half + a_borrowed.get_aabb().half) - pos_diff.abs();
+    let penetration = (b_aabb.half.clone() + a_aabb.half.clone()) - pos_diff.abs();
     if penetration.x <= 0f32 || penetration.y <= 0f32 {
         return None;
     }
@@ -35,25 +48,31 @@ pub fn aabb_vs_aabb(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Coll
         return Some(Collision {
             penetration_depth: penetration.x * sign_x,
             normal: Vec2::new(sign_x, 0f32),
-            a: Rc::clone(a),
-            b: Rc::clone(b),
+            a: a_mutex.clone(),
+            b: b_mutex.clone(),
         });
     }
     let sign_y = pos_diff.y.signum();
     Some(Collision {
         penetration_depth: penetration.y * sign_y,
         normal: Vec2::new(0f32, sign_y),
-        a: Rc::clone(a),
-        b: Rc::clone(b),
+        a: a_mutex.clone(),
+        b: b_mutex.clone(),
     })
 }
 
-pub fn circle_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
-    let a_borrowed = a.borrow();
-    let b_borrowed = b.borrow();
-    let normal = &b_borrowed.position - &a_borrowed.position;
+pub fn circle_vs_circle(
+    a_mutex: &WrappedBody,
+    b_mutex: &WrappedBody,
+    a_circle: &Circle,
+    b_circle: &Circle,
+) -> Option<Collision> {
+    let a = a_mutex.lock().unwrap();
+    let b = b_mutex.lock().unwrap();
 
-    let radius = (a_borrowed.shape.get_radius() + b_borrowed.shape.get_radius()).powf(2f32);
+    let normal = &b.position - &a.position;
+
+    let radius = (a_circle.get_radius() + b_circle.get_radius()).powf(2f32);
 
     let distance_sqr = distance_squared(&normal);
 
@@ -64,31 +83,34 @@ pub fn circle_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<
 
     if distance != 0f32 {
         return Some(Collision {
-            penetration_depth: (a_borrowed.shape.get_radius() + b_borrowed.shape.get_radius())
-                - distance,
+            penetration_depth: (a_circle.get_radius() + b_circle.get_radius()) - distance,
             normal: normal / distance,
-            a: Rc::clone(a),
-            b: Rc::clone(b),
+            a: a_mutex.clone(),
+            b: b_mutex.clone(),
         });
     }
     // Circles are on the same position
     // Choose random (but consistent) values
     Some(Collision {
-        penetration_depth: a_borrowed.shape.get_radius(),
+        penetration_depth: a_circle.get_radius(),
         normal: Vec2::new(1f32, 0f32),
-        a: Rc::clone(a),
-        b: Rc::clone(b),
+        a: a_mutex.clone(),
+        b: b_mutex.clone(),
     })
 }
 
-pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Collision> {
-    let a_borrowed = a.borrow();
-    let b_borrowed = b.borrow();
+pub fn aabb_vs_circle(
+    a_mutex: &WrappedBody,
+    b_mutex: &WrappedBody,
+    a_aabb: &AABB,
+    b_circle: &Circle,
+) -> Option<Collision> {
+    let a = a_mutex.lock().unwrap();
+    let b = b_mutex.lock().unwrap();
+    let normal = &b.position - &a.position;
 
-    let normal = &b_borrowed.position - &a_borrowed.position;
-
-    let x_extent = a_borrowed.get_aabb().get_width() / 2f32;
-    let y_extent = a_borrowed.get_aabb().get_height() / 2f32;
+    let x_extent = a_aabb.get_width() / 2f32;
+    let y_extent = a_aabb.get_height() / 2f32;
 
     let mut closest = Vec2::new(
         f32::clamp(normal.x, -x_extent, x_extent),
@@ -115,7 +137,7 @@ pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Co
     }
 
     let distance = distance_squared(&(&normal - &closest));
-    let radius = b_borrowed.shape.get_radius();
+    let radius = b_circle.get_radius();
 
     // Return none if radius is shorter than distance to closest
     // point and circle not inside AABB
@@ -129,15 +151,15 @@ pub fn aabb_vs_circle(a: &Rc<RefCell<Body>>, b: &Rc<RefCell<Body>>) -> Option<Co
         Some(Collision {
             penetration_depth: (radius - distance_sqr),
             normal: &normal / radius,
-            a: Rc::clone(a),
-            b: Rc::clone(b),
+            a: a_mutex.clone(),
+            b: b_mutex.clone(),
         })
     } else {
         Some(Collision {
             penetration_depth: (radius - distance_sqr),
             normal: &normal / distance,
-            a: Rc::clone(a),
-            b: Rc::clone(b),
+            a: a_mutex.clone(),
+            b: b_mutex.clone(),
         })
     }
 }

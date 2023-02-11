@@ -9,16 +9,17 @@ fn distance_squared(vec: &Vec2) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum ShapeKind {
-    Circle,
-    AABB,
+#[derive(Debug, Clone)]
+pub enum Shape {
+    Circle(Circle),
+    AABB(AABB),
 }
 
-pub trait Shape {
-    fn get_kind(&self) -> ShapeKind;
-    /*fn vs_circle(&self, other: Rc<RefCell<Body>>) -> Option<Collision>;
-    fn vs_aabb(&self) -> Option<Collision>;*/
-    fn get_radius(&self) -> f32;
-    fn get_aabb(&self) -> AABB;
+impl Shape {
+    pub fn get_aabb(&self) -> AABB {
+        match self {
+            Shape::Circle(circle) => circle.get_aabb(),
+            Shape::AABB(aabb) => aabb.clone(),
+        }
+    }
 }

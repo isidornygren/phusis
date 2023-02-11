@@ -1,10 +1,12 @@
 use std::cell::RefCell;
+use std::mem;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use crate::body::Body;
 use crate::checks::check_collision;
 use crate::collision::Collision;
-use crate::quad_tree;
+use crate::quad_tree::{self, WrappedBody};
 use crate::shape::AABB;
 use crate::Vec2;
 
@@ -70,8 +72,14 @@ fn correct_position(a: &mut Body, b: &mut Body, collision: &Collision) {
     }
 }
 
+#[derive(Debug)]
+pub struct BodyHandle {
+    index: usize,
+}
+
 pub struct PhysicsWorld {
-    bodies: Vec<Rc<RefCell<Body>>>,
+    bodies: Vec<WrappedBody>,
+    removed_indices: Vec<usize>,
     quad_tree: quad_tree::QuadTree,
 }
 
@@ -80,27 +88,45 @@ impl Default for PhysicsWorld {
         Self {
             bodies: vec![],
             quad_tree: quad_tree::QuadTree::new(0, AABB::new(-100f32, -100f32, 1000f32, 1000f32)),
+            removed_indices: vec![],
         }
     }
 }
 
 impl PhysicsWorld {
-    pub fn add_body(&mut self, body: Body) -> Rc<RefCell<Body>> {
-        let body_ref = Rc::new(RefCell::new(body));
-        self.bodies.push(Rc::clone(&body_ref));
-        body_ref
+    pub fn add_body(&mut self, body: Body) -> BodyHandle {
+        if let Some(removed_index) = self.removed_indices.pop() {
+            mem::replace(
+                self.bodies.get_mut(removed_index).unwrap(),
+                Arc::new(Mutex::new(body)),
+            );
+            return BodyHandle {
+                index: removed_index,
+            };
+        }
+        self.bodies.push(Arc::new(Mutex::new(body)));
+        BodyHandle {
+            index: self.bodies.len() - 1,
+        }
     }
 
-    pub fn remove_body(&mut self, _body: Body) {
-        unimplemented!();
+    pub fn remove_body(&mut self, handle: BodyHandle) {
+        self.removed_indices.push(handle.index);
+    }
+
+    pub fn get_body(&self, handle: &BodyHandle) -> Option<&WrappedBody> {
+        self.bodies.get(handle.index)
+    }
+
+    pub fn get_body_mut(&mut self, handle: BodyHandle) -> Option<&mut WrappedBody> {
+        self.bodies.get_mut(handle.index)
     }
 
     fn calc_velocity(&mut self, dt: f32) {
         // Update position of bodies based on velocity
-        for body in &self.bodies {
-            let mut body_mut = body.borrow_mut();
-
+        for body_mutex in &mut self.bodies {
             // Apply force in body
+            let mut body_mut = body_mutex.lock().unwrap();
             // TODO: Fix force code
             // this is not really using any fancy physics, it's just me (???!!!)
             let linear_acceleration = &body_mut.force / body_mut.mass;
@@ -125,18 +151,19 @@ impl PhysicsWorld {
         self.calc_velocity(dt);
         self.quad_tree.clear();
         for body in &self.bodies {
-            self.quad_tree.insert(Rc::clone(body));
+            self.quad_tree.insert(Arc::clone(body));
         }
         let collisions = self.quad_tree.check_collisions();
+
         for collision in collisions {
             resolve_collision(
-                &mut collision.a.borrow_mut(),
-                &mut collision.b.borrow_mut(),
+                &mut collision.a.lock().unwrap(),
+                &mut collision.b.lock().unwrap(),
                 &collision,
             );
             correct_position(
-                &mut collision.a.borrow_mut(),
-                &mut collision.b.borrow_mut(),
+                &mut collision.a.lock().unwrap(),
+                &mut collision.b.lock().unwrap(),
                 &collision,
             );
         }
@@ -147,18 +174,18 @@ impl PhysicsWorld {
         self.quad_tree.get_node_aabb()
     }
 
-    pub fn update(&mut self, dt: f32) {
-        self.calc_velocity(dt);
-        // Resolve collision for body pairs
-        for (i, a) in self.bodies.iter().enumerate() {
-            for b in &self.bodies[(i + 1)..] {
-                // The collision checking stage can definitely be parallelised (probably)
-                let resolution = check_collision(a, b);
-                if let Some(collision) = resolution {
-                    resolve_collision(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
-                    correct_position(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
-                }
-            }
-        }
-    }
+    // pub fn update(&mut self, dt: f32) {
+    //     self.calc_velocity(dt);
+    //     // Resolve collision for body pairs
+    //     for (i, a) in self.bodies.iter().enumerate() {
+    //         for b in &self.bodies[(i + 1)..] {
+    //             // The collision checking stage can definitely be parallelised (probably)
+    //             let resolution = check_collision(a, b);
+    //             if let Some(collision) = resolution {
+    //                 resolve_collision(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
+    //                 correct_position(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
+    //             }
+    //         }
+    //     }
+    // }
 }

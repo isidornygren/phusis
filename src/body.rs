@@ -1,12 +1,8 @@
-
-
-use crate::shape::{Shape, AABB};
+use crate::shape::{Circle, Shape, AABB};
 
 use crate::Vec2;
 
-
-
-
+#[derive(Debug)]
 pub struct Body {
     pub position: Vec2,
     pub velocity: Vec2,
@@ -15,19 +11,30 @@ pub struct Body {
     pub mass: f32,
     pub inv_mass: f32, // 1 / mass
     pub restitution: f32,
-    pub shape: Box<dyn Shape>,
+    pub shape: Shape,
     pub friction: f32,
     pub fixed: bool,
 }
 
+impl Default for Body {
+    fn default() -> Self {
+        Self {
+            position: Vec2::new(0.0, 0.0),
+            velocity: Vec2::new(0.0, 0.0),
+            force: Vec2::new(0.0, 0.0),
+            mass: 1.0,
+            inv_mass: 1.0,
+            restitution: 0.0,
+            shape: Shape::Circle(Circle::new(1.0)),
+            friction: 0.0,
+            fixed: false,
+        }
+    }
+}
+
 impl Body {
-    #[must_use] pub fn new(
-        mass: f32,
-        restitution: f32,
-        shape: Box<dyn Shape>,
-        position: Vec2,
-        fixed: bool,
-    ) -> Self {
+    #[must_use]
+    pub fn new(mass: f32, restitution: f32, shape: Shape, position: Vec2, fixed: bool) -> Self {
         Body {
             mass,
             restitution,
@@ -41,7 +48,8 @@ impl Body {
         }
     }
 
-    #[must_use] pub fn get_aabb(&self) -> AABB {
+    #[must_use]
+    pub fn get_aabb(&self) -> AABB {
         self.shape.get_aabb() + &self.position
     }
 
