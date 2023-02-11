@@ -9,15 +9,22 @@ name = "phusis"
 path = "src/lib.rs"
 
 [dependencies]
+bevy = { version = "0.9", optional = true }
+bevy_prototype_lyon = { version = "0.7", optional = true }
 
 [dev-dependencies]
 stopwatch = "0.0.7"
 rand = "0.8.5"
-bevy = "0.9"
 bevy_prototype_lyon = "0.7"
+bevy = "0.9"
 
 [workspace]
 resolver = "2" # Important! wgpu/Bevy needs this!
 
 [profile.dev]
 opt-level = 1
+
+[features]
+default = ["bevy", "bevy_debug"]
+bevy = ["dep:bevy"]
+bevy_debug = ["bevy", "dep:bevy_prototype_lyon"]

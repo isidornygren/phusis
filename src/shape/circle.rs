@@ -18,9 +18,6 @@ impl Circle {
 }
 
 impl Circle {
-    pub fn get_radius(&self) -> f32 {
-        self.radius
-    }
     pub fn get_aabb(&self) -> AABB {
         self.aabb.clone()
     }

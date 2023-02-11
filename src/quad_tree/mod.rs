@@ -171,7 +171,7 @@ impl QuadTree {
         for (a_index, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
             for (b_index, b) in self.children.iter().enumerate() {
-                if (b_index != a_index) {
+                if b_index != a_index {
                     if let Some(collision) = check_collision(a, b) {
                         collisions.push(collision);
                     }

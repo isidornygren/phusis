@@ -72,7 +72,7 @@ pub fn circle_vs_circle(
 
     let normal = &b.position - &a.position;
 
-    let radius = (a_circle.get_radius() + b_circle.get_radius()).powf(2f32);
+    let radius = (a_circle.radius + b_circle.radius).powf(2f32);
 
     let distance_sqr = distance_squared(&normal);
 
@@ -83,7 +83,7 @@ pub fn circle_vs_circle(
 
     if distance != 0f32 {
         return Some(Collision {
-            penetration_depth: (a_circle.get_radius() + b_circle.get_radius()) - distance,
+            penetration_depth: (a_circle.radius + b_circle.radius) - distance,
             normal: normal / distance,
             a: a_mutex.clone(),
             b: b_mutex.clone(),
@@ -92,7 +92,7 @@ pub fn circle_vs_circle(
     // Circles are on the same position
     // Choose random (but consistent) values
     Some(Collision {
-        penetration_depth: a_circle.get_radius(),
+        penetration_depth: a_circle.radius,
         normal: Vec2::new(1f32, 0f32),
         a: a_mutex.clone(),
         b: b_mutex.clone(),
@@ -137,7 +137,7 @@ pub fn aabb_vs_circle(
     }
 
     let distance = distance_squared(&(&normal - &closest));
-    let radius = b_circle.get_radius();
+    let radius = b_circle.radius;
 
     // Return none if radius is shorter than distance to closest
     // point and circle not inside AABB

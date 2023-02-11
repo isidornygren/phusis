@@ -1,12 +1,10 @@
-extern crate phusis;
-extern crate stopwatch;
-
-use phusis::shape::{Circle, Shape};
-use phusis::world::PhysicsWorld;
-use phusis::{body::Body, Vec2};
-
+use phusis::{
+    body::Body,
+    shape::{Circle, Shape},
+    world::PhysicsWorld,
+    Vec2,
+};
 use rand::prelude::*;
-
 use std::time::Instant;
 
 const S_PER_UPDATE: f32 = 1f32 / 60f32;
