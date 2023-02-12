@@ -22,7 +22,10 @@ bevy = "0.9"
 resolver = "2" # Important! wgpu/Bevy needs this!
 
 [profile.dev]
-opt-level = 1
+opt-level = 3
+
+[profile.release]
+debug = true
 
 [features]
 default = ["bevy", "bevy_debug"]

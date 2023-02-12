@@ -153,8 +153,6 @@ impl PhysicsWorld {
         self.calc_velocity(dt);
         let collisions = self.quad_tree.check_collisions();
 
-        println!("Collisions: {}", collisions.len());
-
         for collision in collisions {
             let a_sensor_or_fixed = collision
                 .a

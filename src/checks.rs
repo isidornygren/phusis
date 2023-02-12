@@ -15,16 +15,28 @@ fn distance_squared(vec: &Vec2) -> f32 {
 }
 
 pub fn check_collision(a: &WrappedBody, b: &WrappedBody) -> Option<Collision> {
-    let a_shape = &a.lock().unwrap().shape.clone();
-    let b_shape = &b.lock().unwrap().shape.clone();
+    let (a_shape, a_position) = {
+        let a_body = a.lock().unwrap();
+        (&a_body.shape.clone(), &a_body.position.clone())
+    };
+    let (b_shape, b_position) = {
+        let b_body = b.lock().unwrap();
+        (&b_body.shape.clone(), &b_body.position.clone())
+    };
 
     match (a_shape, b_shape) {
         (Shape::Circle(a_circle), Shape::Circle(b_circle)) => {
-            circle_vs_circle(a, b, a_circle, b_circle)
+            circle_vs_circle(a, b, a_circle, b_circle, a_position, b_position)
         }
-        (Shape::AABB(a_aabb), Shape::AABB(b_aabb)) => aabb_vs_aabb(a, b, a_aabb, b_aabb),
-        (Shape::Circle(circle), Shape::AABB(aabb)) => aabb_vs_circle(b, a, aabb, circle),
-        (Shape::AABB(aabb), Shape::Circle(circle)) => aabb_vs_circle(a, b, aabb, circle),
+        (Shape::AABB(a_aabb), Shape::AABB(b_aabb)) => {
+            aabb_vs_aabb(a, b, a_aabb, b_aabb, a_position, b_position)
+        }
+        (Shape::Circle(circle), Shape::AABB(aabb)) => {
+            aabb_vs_circle(b, a, aabb, circle, a_position, b_position)
+        }
+        (Shape::AABB(aabb), Shape::Circle(circle)) => {
+            aabb_vs_circle(a, b, aabb, circle, a_position, b_position)
+        }
     }
 }
 
@@ -33,11 +45,10 @@ pub fn aabb_vs_aabb(
     b_mutex: &WrappedBody,
     a_aabb: &AABB,
     b_aabb: &AABB,
+    a_position: &Vec2,
+    b_position: &Vec2,
 ) -> Option<Collision> {
-    let a = a_mutex.lock().unwrap();
-    let b = b_mutex.lock().unwrap();
-
-    let pos_diff = &b.position - &a.position;
+    let pos_diff = b_position - a_position;
 
     let penetration = (b_aabb.half.clone() + a_aabb.half.clone()) - pos_diff.abs();
     if penetration.x <= 0f32 || penetration.y <= 0f32 {
@@ -66,11 +77,10 @@ pub fn circle_vs_circle(
     b_mutex: &WrappedBody,
     a_circle: &Circle,
     b_circle: &Circle,
+    a_position: &Vec2,
+    b_position: &Vec2,
 ) -> Option<Collision> {
-    let a = a_mutex.lock().unwrap();
-    let b = b_mutex.lock().unwrap();
-
-    let normal = &b.position - &a.position;
+    let normal = b_position - a_position;
 
     let radius = (a_circle.radius + b_circle.radius).powf(2f32);
 
@@ -104,10 +114,10 @@ pub fn aabb_vs_circle(
     b_mutex: &WrappedBody,
     a_aabb: &AABB,
     b_circle: &Circle,
+    a_position: &Vec2,
+    b_position: &Vec2,
 ) -> Option<Collision> {
-    let a = a_mutex.lock().unwrap();
-    let b = b_mutex.lock().unwrap();
-    let normal = &b.position - &a.position;
+    let normal = b_position - a_position;
 
     let x_extent = a_aabb.get_width() / 2f32;
     let y_extent = a_aabb.get_height() / 2f32;
