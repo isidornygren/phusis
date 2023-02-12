@@ -1,20 +1,22 @@
-use std::cell::RefCell;
 use std::mem;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use crate::body::Body;
-use crate::checks::check_collision;
 use crate::collision::Collision;
 use crate::quad_tree::{self, WrappedBody};
 use crate::shape::AABB;
 use crate::Vec2;
 
+// High percentage = no penetration
+const PENETRATION_PERCENTAGE: f32 = 0.5;
+// Allows penetration without jittering
+const K_SLOP: f32 = 0.01;
+
 /**
  * Sets velocity in m/s
  */
 fn resolve_collision(a: &mut Body, b: &mut Body, collision: &Collision) {
-    if a.fixed && b.fixed {
+    if (a.fixed && b.fixed) || a.sensor || b.sensor {
         return;
     }
     let relative_velocity = &b.velocity - &a.velocity;
@@ -45,22 +47,18 @@ fn resolve_collision(a: &mut Body, b: &mut Body, collision: &Collision) {
 }
 
 fn correct_position(a: &mut Body, b: &mut Body, collision: &Collision) {
-    if a.fixed && b.fixed {
+    if a.fixed && b.fixed || a.sensor || b.sensor {
         return;
     }
-    // High percentage = no penetration
-    let percent = 0.5;
-    // Allows penetration without jittering
-    let k_slop = 0.01;
 
-    let maximum = 0f32.max(collision.penetration_depth - k_slop);
+    let maximum = 0f32.max(collision.penetration_depth - K_SLOP);
 
     let correction_scalar = if b.fixed {
-        maximum / a.inv_mass * percent
+        maximum / a.inv_mass * PENETRATION_PERCENTAGE
     } else if a.fixed {
-        maximum / b.inv_mass * percent
+        maximum / b.inv_mass * PENETRATION_PERCENTAGE
     } else {
-        maximum / (a.inv_mass + b.inv_mass) * percent
+        maximum / (a.inv_mass + b.inv_mass) * PENETRATION_PERCENTAGE
     };
 
     let correction = &collision.normal * correction_scalar;
@@ -87,7 +85,7 @@ impl Default for PhysicsWorld {
     fn default() -> Self {
         Self {
             bodies: vec![],
-            quad_tree: quad_tree::QuadTree::new(0, AABB::new(-100f32, -100f32, 1000f32, 1000f32)),
+            quad_tree: quad_tree::QuadTree::new(0, AABB::new(-1000f32, -1000f32, 1000f32, 1000f32)),
             removed_indices: vec![],
         }
     }
@@ -95,16 +93,19 @@ impl Default for PhysicsWorld {
 
 impl PhysicsWorld {
     pub fn add_body(&mut self, body: Body) -> BodyHandle {
+        let body_mutex = Arc::new(Mutex::new(body));
+
         if let Some(removed_index) = self.removed_indices.pop() {
             mem::replace(
                 self.bodies.get_mut(removed_index).unwrap(),
-                Arc::new(Mutex::new(body)),
+                Arc::clone(&body_mutex),
             );
             return BodyHandle {
                 index: removed_index,
             };
         }
-        self.bodies.push(Arc::new(Mutex::new(body)));
+        self.bodies.push(Arc::clone(&body_mutex));
+        self.quad_tree.insert(body_mutex);
         BodyHandle {
             index: self.bodies.len() - 1,
         }
@@ -112,6 +113,8 @@ impl PhysicsWorld {
 
     pub fn remove_body(&mut self, handle: BodyHandle) {
         self.removed_indices.push(handle.index);
+        let body_mutex = self.bodies.get(handle.index).unwrap();
+        self.quad_tree.remove(body_mutex);
     }
 
     pub fn get_body(&self, handle: &BodyHandle) -> Option<&WrappedBody> {
@@ -135,7 +138,6 @@ impl PhysicsWorld {
             body_mut.force = Vec2::new(0f32, 0f32);
 
             // Apply friction based on surface
-            // TODO: check surface friction
             let friction_val = (body_mut.friction * &body_mut.velocity) * dt;
             body_mut.velocity -= friction_val;
 
@@ -149,13 +151,27 @@ impl PhysicsWorld {
 
     pub fn update_with_quad(&mut self, dt: f32) {
         self.calc_velocity(dt);
-        self.quad_tree.clear();
-        for body in &self.bodies {
-            self.quad_tree.insert(Arc::clone(body));
-        }
         let collisions = self.quad_tree.check_collisions();
 
+        println!("Collisions: {}", collisions.len());
+
         for collision in collisions {
+            let a_sensor_or_fixed = collision
+                .a
+                .lock()
+                .map_or(false, |a_body| a_body.fixed || a_body.sensor);
+            let b_sensor_or_fixed = collision
+                .b
+                .lock()
+                .map_or(false, |b_body| b_body.fixed || b_body.sensor);
+
+            if !a_sensor_or_fixed {
+                self.quad_tree.remove(&collision.a);
+            }
+            if !b_sensor_or_fixed {
+                self.quad_tree.remove(&collision.b);
+            }
+
             resolve_collision(
                 &mut collision.a.lock().unwrap(),
                 &mut collision.b.lock().unwrap(),
@@ -166,6 +182,13 @@ impl PhysicsWorld {
                 &mut collision.b.lock().unwrap(),
                 &collision,
             );
+
+            if !a_sensor_or_fixed {
+                self.quad_tree.insert(collision.a);
+            }
+            if !b_sensor_or_fixed {
+                self.quad_tree.insert(collision.b);
+            }
         }
     }
 

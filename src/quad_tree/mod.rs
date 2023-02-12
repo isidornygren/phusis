@@ -21,6 +21,7 @@ pub type WrappedBody = Arc<Mutex<Body>>;
  * TODO: AABB should be integer based here
  */
 
+#[derive(Debug)]
 pub struct QuadTree {
     bounds: AABB,
     level: u8,
@@ -55,13 +56,40 @@ impl QuadTree {
             while i < self.children.len() {
                 let aabb = self.children[i].lock().unwrap().get_aabb();
                 match self.get_index(&aabb) {
-                    Some(j) => {
-                        self.nodes.as_mut().unwrap()[j].insert(self.children.remove(i));
+                    Some(quadrant_index) => {
+                        self.nodes.as_mut().unwrap()[quadrant_index]
+                            .insert(self.children.remove(i));
                     }
                     None => {
                         i += 1;
                     }
                 }
+            }
+        }
+    }
+    /**
+     * Removes an element from the quad tree
+     */
+    pub fn remove(&mut self, body: &WrappedBody) {
+        if let Some(index) = self
+            .children
+            .iter()
+            .position(|child| Arc::ptr_eq(body, child))
+        {
+            // Remove that index
+            self.children.remove(index);
+        } else {
+            // Traverse to a child quad tree
+            let unlocked_body = body.lock().unwrap();
+            if let Some(quadrant_index) = self.get_index(&unlocked_body.get_aabb()) {
+                drop(unlocked_body);
+                if let Some(node) = self.nodes.as_mut() {
+                    node[quadrant_index].remove(body);
+                } else {
+                    println!("Quadrant {} not found on quad tree", quadrant_index);
+                    unreachable!();
+                }
+            } else {
             }
         }
     }
@@ -139,8 +167,7 @@ impl QuadTree {
         if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
             nodes[i].retrieve(item)
         } else {
-            // should return all the nodes childrens as well
-            self.children.clone()
+            self.get_children()
         }
     }
 
@@ -155,7 +182,6 @@ impl QuadTree {
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
                 nodes_children.extend(node.get_children());
-                // nodes_children.extend(node.get_node_children());
             }
         }
         nodes_children
@@ -168,13 +194,11 @@ impl QuadTree {
         let sub_children = self.get_node_children();
         // check for collision within its children and the
         // sub children
-        for (a_index, a) in self.children.iter().enumerate() {
+        for (i, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
-            for (b_index, b) in self.children.iter().enumerate() {
-                if b_index != a_index {
-                    if let Some(collision) = check_collision(a, b) {
-                        collisions.push(collision);
-                    }
+            for b in &self.children[(i + 1)..] {
+                if let Some(collision) = check_collision(a, b) {
+                    collisions.push(collision);
                 }
             }
             // check for collisions with sub children
@@ -201,5 +225,114 @@ impl QuadTree {
             }
         }
         aabb_vec
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        shape::{Circle, Shape},
+        Vec2,
+    };
+
+    use super::*;
+
+    #[test]
+    fn it_inserts_maximum_children() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-1f32, -1f32, 1f32, 1f32));
+
+        for _ in 0..MAX_CHILDREN {
+            let body = Arc::new(Mutex::new(Body::default()));
+            quad_tree.insert(body);
+        }
+
+        assert_eq!(quad_tree.children.len(), MAX_CHILDREN)
+    }
+
+    #[test]
+    fn is_splits_into_quadrants() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10f32, -10f32, 10f32, 10f32));
+
+        let length = MAX_CHILDREN * 4;
+        for i in 0..length {
+            let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
+            let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
+
+            let body = Arc::new(Mutex::new(Body::new(
+                1.0,
+                1.0,
+                Shape::Circle(Circle::new(0.1)),
+                Vec2::new(x, y),
+                false,
+                false,
+            )));
+            quad_tree.insert(body);
+        }
+
+        assert_eq!(quad_tree.children.len(), 0);
+        assert_eq!(
+            (
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopLeft as usize]
+                    .children
+                    .len(),
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopRight as usize]
+                    .children
+                    .len(),
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomLeft as usize]
+                    .children
+                    .len(),
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomRight as usize]
+                    .children
+                    .len()
+            ),
+            (MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
+        )
+    }
+
+    #[test]
+    fn it_removes_body() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10f32, -10f32, 10f32, 10f32));
+
+        let mut bodies = vec![];
+
+        let length = MAX_CHILDREN * 4;
+        for i in 0..length {
+            let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
+            let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
+
+            let body = Arc::new(Mutex::new(Body::new(
+                1.0,
+                1.0,
+                Shape::Circle(Circle::new(0.1)),
+                Vec2::new(x, y),
+                false,
+                false,
+            )));
+            if x == -10.0 && y == -10.0 {
+                bodies.push(Arc::clone(&body));
+            }
+            quad_tree.insert(body);
+        }
+        bodies.iter().for_each(|body| {
+            quad_tree.remove(body);
+        });
+        assert_eq!(quad_tree.children.len(), 0);
+        assert_eq!(
+            (
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopLeft as usize]
+                    .children
+                    .len(),
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopRight as usize]
+                    .children
+                    .len(),
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomLeft as usize]
+                    .children
+                    .len(),
+                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomRight as usize]
+                    .children
+                    .len()
+            ),
+            (0, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
+        )
     }
 }

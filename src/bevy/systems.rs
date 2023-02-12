@@ -2,17 +2,19 @@ use bevy::prelude::*;
 
 use crate::{body::Body, Vec2};
 
-use super::components::{ComponentBody, ComponentBodyHandle, PhysicsWorldResource};
+use super::components::{Collider, ComponentBodyHandle, PhysicsWorldResource, Sensor};
 
 pub fn on_body_change(
     mut commands: Commands,
     mut physics_world: ResMut<PhysicsWorldResource>,
-    query: Query<(&ComponentBody, &Transform, Entity), Added<ComponentBody>>,
+    query: Query<(&Collider, &Transform, Option<&Sensor>, Entity), Added<Collider>>,
 ) {
-    for (body, transform, entity) in query.iter() {
+    for (collider, transform, sensor, entity) in query.iter() {
         let handle = physics_world.physics_world.add_body(Body {
-            shape: body.shape.clone(),
+            shape: collider.shape.clone(),
             position: Vec2::new(transform.translation.x, transform.translation.y),
+            fixed: collider.fixed,
+            sensor: sensor.is_some(),
             ..default()
         });
         commands

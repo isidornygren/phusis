@@ -1,16 +1,23 @@
 use bevy::prelude::*;
 
-use crate::shape::Shape;
+use crate::{bevy::components::Sensor, shape::Shape};
 
-use super::components::ComponentBody;
+use super::components::Collider;
 
 fn debug_physics(
     mut commands: Commands,
-    query: Query<(&ComponentBody, &Transform, Entity), Changed<ComponentBody>>,
+    query: Query<(&Collider, &Transform, Option<&Sensor>, Entity), Changed<Collider>>,
 ) {
     use bevy_prototype_lyon::prelude::*;
 
-    for (body, transform, entity) in query.iter() {
+    for (body, transform, sensor, entity) in query.iter() {
+        let color = match (body.fixed, sensor.is_some()) {
+            (true, true) => Color::GREEN,
+            (true, false) => Color::BLUE,
+            (false, true) => Color::YELLOW,
+            (false, false) => Color::RED,
+        };
+
         match &body.shape {
             Shape::Circle(circle) => {
                 let shape = shapes::RegularPolygon {
@@ -22,7 +29,7 @@ fn debug_physics(
                     &shape,
                     DrawMode::Outlined {
                         fill_mode: FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-                        outline_mode: StrokeMode::new(Color::GREEN, 1.0),
+                        outline_mode: StrokeMode::new(color, 1.0),
                     },
                     *transform,
                 ));
@@ -36,7 +43,7 @@ fn debug_physics(
                     &shape,
                     DrawMode::Outlined {
                         fill_mode: FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-                        outline_mode: StrokeMode::new(Color::GREEN, 1.0),
+                        outline_mode: StrokeMode::new(color, 1.0),
                     },
                     *transform,
                 ));

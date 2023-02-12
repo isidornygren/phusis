@@ -9,7 +9,7 @@ mod components;
 mod debug;
 mod systems;
 
-pub use components::ComponentBody;
+pub use components::{Collider, Sensor};
 
 #[derive(StageLabel)]
 pub enum PhusisStage {

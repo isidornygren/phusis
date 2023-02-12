@@ -31,6 +31,7 @@ fn main() {
                 Shape::Circle(Circle::new(8f32)),
                 Vec2::new(x, y),
                 false,
+                false,
             ));
         }
         for _ in 0..UPDATES {

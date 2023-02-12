@@ -16,10 +16,10 @@ pub enum Shape {
 }
 
 impl Shape {
-    pub fn get_aabb(&self) -> AABB {
+    pub fn get_aabb(&self) -> &AABB {
         match self {
             Shape::Circle(circle) => circle.get_aabb(),
-            Shape::AABB(aabb) => aabb.clone(),
+            Shape::AABB(aabb) => aabb,
         }
     }
 }

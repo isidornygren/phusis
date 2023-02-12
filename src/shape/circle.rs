@@ -18,7 +18,7 @@ impl Circle {
 }
 
 impl Circle {
-    pub fn get_aabb(&self) -> AABB {
-        self.aabb.clone()
+    pub fn get_aabb(&self) -> &AABB {
+        &self.aabb
     }
 }

@@ -7,13 +7,13 @@ pub struct Body {
     pub position: Vec2,
     pub velocity: Vec2,
     pub force: Vec2, // TODO: is this needed
-    // pub acceleration: f32,
     pub mass: f32,
-    pub inv_mass: f32, // 1 / mass
+    pub inv_mass: f32,
     pub restitution: f32,
     pub shape: Shape,
     pub friction: f32,
     pub fixed: bool,
+    pub sensor: bool,
 }
 
 impl Default for Body {
@@ -28,13 +28,21 @@ impl Default for Body {
             shape: Shape::Circle(Circle::new(1.0)),
             friction: 0.0,
             fixed: false,
+            sensor: false,
         }
     }
 }
 
 impl Body {
     #[must_use]
-    pub fn new(mass: f32, restitution: f32, shape: Shape, position: Vec2, fixed: bool) -> Self {
+    pub fn new(
+        mass: f32,
+        restitution: f32,
+        shape: Shape,
+        position: Vec2,
+        fixed: bool,
+        sensor: bool,
+    ) -> Self {
         Body {
             mass,
             restitution,
@@ -45,6 +53,7 @@ impl Body {
             shape,
             friction: 5f32,
             fixed,
+            sensor,
         }
     }
 
@@ -52,10 +61,4 @@ impl Body {
     pub fn get_aabb(&self) -> AABB {
         self.shape.get_aabb() + &self.position
     }
-
-    /*pub fn apply_force(&mut self, force: Vec2) {
-        // self.force += force;
-        self.force += force;
-        // self.velocity = force * self.inv_mass * dt;
-    }*/
 }

@@ -62,13 +62,13 @@ impl AABB {
     }
 }
 
-impl Add<&Vec2> for AABB {
-    type Output = Self;
+impl Add<&Vec2> for &AABB {
+    type Output = AABB;
     fn add(self, other: &Vec2) -> AABB {
         AABB {
-            min: self.min + other,
-            max: self.max + other,
-            half: self.half,
+            min: self.min.clone() + other,
+            max: self.max.clone() + other,
+            half: self.half.clone(),
         }
     }
 }
