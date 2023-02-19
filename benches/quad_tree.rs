@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::prelude::Entity;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use phusis::{
@@ -25,6 +27,30 @@ fn quad_tree_bench(c: &mut Criterion) {
                 Entity::from_raw(0),
             ))
         })
+    });
+    c.bench_function("deletion", |b| {
+        // b.iter_batched(|| data.clone(), |mut data| sort(&mut data), BatchSize::SmallInput)
+
+        b.iter_batched(
+            || {
+                let mut physics_world = PhysicsWorld::default();
+                let handle = physics_world.add_body(Body::new(
+                    black_box(1f32),
+                    black_box(1f32),
+                    Shape::Circle(Circle::new(8f32)),
+                    Vec2::new(1f32, 1f32),
+                    black_box(false),
+                    black_box(false),
+                    Entity::from_raw(0),
+                ));
+
+                (physics_world, handle)
+            },
+            |(mut physics_world, handle)| {
+                physics_world.remove_body(handle);
+            },
+            criterion::BatchSize::SmallInput,
+        )
     });
     c.bench_function("collision_update 200", |b| {
         let mut physics_world = PhysicsWorld::default();

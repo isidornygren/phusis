@@ -18,15 +18,9 @@ pub struct Collider {
     pub fixed: bool,
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Collisions {
     pub entities: Vec<Entity>,
-}
-
-impl Collisions {
-    pub fn new() -> Self {
-        Self { entities: vec![] }
-    }
 }
 
 #[derive(Component)]

@@ -16,9 +16,9 @@ fn add_bodies(mut commands: Commands) {
     let mut rng = rand::thread_rng();
 
     for _ in 0..10000 {
-        let x = rng.gen_range(-500..500) as f32;
-        let y = rng.gen_range(-500..500) as f32;
-        let radius = 10.0;
+        let x = rng.gen_range(-100..100) as f32;
+        let y = rng.gen_range(-100..100) as f32;
+        let radius = 3.0;
 
         commands
             .spawn(Transform::from_xyz(x, y, 1.0))

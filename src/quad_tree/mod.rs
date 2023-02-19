@@ -85,7 +85,6 @@ impl QuadTree {
                     println!("Quadrant {} not found on quad tree", quadrant_index);
                     unreachable!();
                 }
-            } else {
             }
         }
     }
