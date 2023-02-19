@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::{body::Body, collision::Collision, quad_tree::QuadTree, shape::AABB, Vec2};
 
 // High percentage = no penetration
