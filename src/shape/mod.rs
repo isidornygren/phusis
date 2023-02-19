@@ -11,6 +11,7 @@ pub enum Shape {
 }
 
 impl Shape {
+    #[must_use]
     pub fn get_aabb(&self) -> &AABB {
         match self {
             Shape::Circle(circle) => circle.get_aabb(),

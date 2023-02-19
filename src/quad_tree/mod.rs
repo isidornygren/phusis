@@ -295,7 +295,7 @@ mod tests {
                     .len()
             ),
             (MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
-        )
+        );
     }
 
     #[test]
@@ -347,6 +347,6 @@ mod tests {
                     .len()
             ),
             (0, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
-        )
+        );
     }
 }

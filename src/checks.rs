@@ -26,10 +26,7 @@ pub fn check_collision(
         (Shape::AABB(a_aabb), Shape::AABB(b_aabb)) => {
             aabb_vs_aabb(a_aabb, b_aabb, a_position, b_position, a_handle, b_handle)
         }
-        (Shape::Circle(circle), Shape::AABB(aabb)) => {
-            aabb_vs_circle(aabb, circle, a_position, b_position, a_handle, b_handle)
-        }
-        (Shape::AABB(aabb), Shape::Circle(circle)) => {
+        (Shape::Circle(circle), Shape::AABB(aabb)) | (Shape::AABB(aabb), Shape::Circle(circle)) => {
             aabb_vs_circle(aabb, circle, a_position, b_position, a_handle, b_handle)
         }
     }

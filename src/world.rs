@@ -126,6 +126,7 @@ impl PhysicsWorld {
         self.quad_tree.insert(handle.clone(), &self.bodies);
     }
 
+    #[must_use]
     pub fn get_body(&self, handle: &BodyHandle) -> Option<&Body> {
         self.bodies.get(handle.index)
     }

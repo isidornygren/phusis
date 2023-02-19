@@ -18,6 +18,7 @@ impl Circle {
 }
 
 impl Circle {
+    #[must_use]
     pub fn get_aabb(&self) -> &AABB {
         &self.aabb
     }
