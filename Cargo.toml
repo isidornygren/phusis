@@ -1,8 +1,14 @@
 [package]
 name = "phusis"
+description = "A simple quad tree based physics engine with bevy compatibility"
+repository = "https://github.com/isidornygren/phusis"
 version = "0.1.0"
-authors = ["Isidor Nygren <karlisidornygren@gmail.com>"]
+authors = ["Isidor Nygren <me@isidornygren.com>"]
 edition = "2018"
+license = "MIT"
+readme = "./README.md"
+keywords = ["physics engine", "quad tree"]
+categories = ["data-structures", "game-development"]
 
 [lib]
 name = "phusis"

@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use phusis::{
-    bevy::{Collider, PhusisBevyPlugin, Sensor},
-    shape::{Circle, Shape, AABB},
+    bevy::{Collider, PhusisBevyPlugin},
+    shape::{Circle, Shape},
 };
 use rand::prelude::*;
 
