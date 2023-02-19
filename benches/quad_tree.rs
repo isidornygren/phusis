@@ -26,18 +26,39 @@ fn quad_tree_bench(c: &mut Criterion) {
             ))
         })
     });
+    c.bench_function("collision_update 200", |b| {
+        let mut physics_world = PhysicsWorld::default();
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..BODIES {
+            let x = rng.gen_range(0..100) as f32;
+            let y = rng.gen_range(0..100) as f32;
+
+            let _new_body = physics_world.add_body(Body::new(
+                1f32,
+                1f32,
+                Shape::Circle(Circle::new(10f32)),
+                Vec2::new(x, y),
+                false,
+                false,
+                Entity::from_raw(0),
+            ));
+        }
+        b.iter(|| physics_world.quad_tree.check_collisions())
+    });
+
     c.bench_function("update 200", |b| {
         let mut physics_world = PhysicsWorld::default();
         let mut rng = rand::thread_rng();
 
         for _ in 0..BODIES {
-            let x = rng.gen_range(36..724) as f32;
-            let y = rng.gen_range(36..524) as f32;
+            let x = rng.gen_range(0..100) as f32;
+            let y = rng.gen_range(0..100) as f32;
 
             let _new_body = physics_world.add_body(Body::new(
                 1f32,
                 1f32,
-                Shape::Circle(Circle::new(8f32)),
+                Shape::Circle(Circle::new(10f32)),
                 Vec2::new(x, y),
                 false,
                 false,
