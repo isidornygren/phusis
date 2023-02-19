@@ -1,3 +1,6 @@
+#[cfg(feature = "bevy")]
+use bevy::prelude::Entity;
+
 use crate::shape::{Circle, Shape, AABB};
 
 use crate::Vec2;
@@ -14,6 +17,8 @@ pub struct Body {
     pub friction: f32,
     pub fixed: bool,
     pub sensor: bool,
+    #[cfg(feature = "bevy")]
+    pub entity: Entity,
 }
 
 impl Default for Body {
@@ -29,6 +34,8 @@ impl Default for Body {
             friction: 0.0,
             fixed: false,
             sensor: false,
+            #[cfg(feature = "bevy")]
+            entity: Entity::from_bits(0),
         }
     }
 }
@@ -42,6 +49,7 @@ impl Body {
         position: Vec2,
         fixed: bool,
         sensor: bool,
+        #[cfg(feature = "bevy")] entity: Entity,
     ) -> Self {
         Body {
             mass,
@@ -54,6 +62,8 @@ impl Body {
             friction: 5f32,
             fixed,
             sensor,
+            #[cfg(feature = "bevy")]
+            entity,
         }
     }
 

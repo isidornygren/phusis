@@ -18,32 +18,34 @@ fn debug_physics(
             (false, false) => Color::RED,
         };
 
+        let scale = 6.0; // transform.scale.x;
+
         match &body.shape {
             Shape::Circle(circle) => {
                 let shape = shapes::RegularPolygon {
                     sides: 24,
-                    feature: shapes::RegularPolygonFeature::Radius(circle.radius),
+                    feature: shapes::RegularPolygonFeature::Radius(circle.radius / scale),
                     ..default()
                 };
                 commands.entity(entity).insert(GeometryBuilder::build_as(
                     &shape,
                     DrawMode::Outlined {
                         fill_mode: FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-                        outline_mode: StrokeMode::new(color, 1.0),
+                        outline_mode: StrokeMode::new(color, 1.0 / scale),
                     },
                     *transform,
                 ));
             }
             Shape::AABB(aabb) => {
                 let shape = shapes::Rectangle {
-                    extents: Vec2::new(aabb.get_width(), aabb.get_height()),
+                    extents: Vec2::new(aabb.get_width() / scale, aabb.get_height() / scale),
                     ..default()
                 };
                 commands.entity(entity).insert(GeometryBuilder::build_as(
                     &shape,
                     DrawMode::Outlined {
                         fill_mode: FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-                        outline_mode: StrokeMode::new(color, 1.0),
+                        outline_mode: StrokeMode::new(color, 1.0 / scale),
                     },
                     *transform,
                 ));

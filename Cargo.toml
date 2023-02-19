@@ -17,6 +17,11 @@ stopwatch = "0.0.7"
 rand = "0.8.5"
 bevy_prototype_lyon = "0.7"
 bevy = "0.9"
+criterion = "0.4.0"
+
+[[bench]]
+name = "quad_tree"
+harness = false
 
 [workspace]
 resolver = "2" # Important! wgpu/Bevy needs this!

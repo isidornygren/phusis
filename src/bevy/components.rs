@@ -19,6 +19,17 @@ pub struct Collider {
 }
 
 #[derive(Component)]
+pub struct Collisions {
+    pub entities: Vec<Entity>,
+}
+
+impl Collisions {
+    pub fn new() -> Self {
+        Self { entities: vec![] }
+    }
+}
+
+#[derive(Component)]
 pub struct Sensor;
 
 #[derive(Component)]

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_prototype_lyon::prelude::ShapePlugin;
 
 use crate::world::PhysicsWorld;
 
@@ -9,7 +10,7 @@ mod components;
 mod debug;
 mod systems;
 
-pub use components::{Collider, Sensor};
+pub use components::{Collider, Collisions, Sensor};
 
 #[derive(StageLabel)]
 pub enum PhusisStage {
@@ -47,9 +48,11 @@ impl Plugin for PhusisBevyPlugin {
             SystemStage::parallel(),
         )
         .add_system_to_stage(PhusisStage::Init, systems::on_body_change)
+        .add_system_to_stage(PhusisStage::PreUpdate, systems::on_body_transform_change)
         .add_system_to_stage(PhusisStage::Update, systems::update_physics);
 
         #[cfg(feature = "bevy_debug")]
+        app.add_plugin(ShapePlugin);
         app.add_plugin(debug::PhusisBevyDebugPlugin);
     }
 }

@@ -230,6 +230,8 @@ impl QuadTree {
 
 #[cfg(test)]
 mod tests {
+    use std::default;
+
     use crate::{
         shape::{Circle, Shape},
         Vec2,
@@ -265,6 +267,7 @@ mod tests {
                 Vec2::new(x, y),
                 false,
                 false,
+                Body::default().entity,
             )));
             quad_tree.insert(body);
         }
@@ -307,6 +310,7 @@ mod tests {
                 Vec2::new(x, y),
                 false,
                 false,
+                Body::default().entity,
             )));
             if x == -10.0 && y == -10.0 {
                 bodies.push(Arc::clone(&body));

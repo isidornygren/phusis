@@ -78,7 +78,7 @@ pub struct BodyHandle {
 pub struct PhysicsWorld {
     bodies: Vec<WrappedBody>,
     removed_indices: Vec<usize>,
-    quad_tree: quad_tree::QuadTree,
+    pub quad_tree: quad_tree::QuadTree,
 }
 
 impl Default for PhysicsWorld {
@@ -149,11 +149,11 @@ impl PhysicsWorld {
         }
     }
 
-    pub fn update_with_quad(&mut self, dt: f32) {
+    pub fn update_with_quad(&mut self, dt: f32) -> Vec<Collision> {
         self.calc_velocity(dt);
         let collisions = self.quad_tree.check_collisions();
 
-        for collision in collisions {
+        for collision in &collisions {
             let a_sensor_or_fixed = collision
                 .a
                 .lock()
@@ -173,21 +173,23 @@ impl PhysicsWorld {
             resolve_collision(
                 &mut collision.a.lock().unwrap(),
                 &mut collision.b.lock().unwrap(),
-                &collision,
+                collision,
             );
             correct_position(
                 &mut collision.a.lock().unwrap(),
                 &mut collision.b.lock().unwrap(),
-                &collision,
+                collision,
             );
 
             if !a_sensor_or_fixed {
-                self.quad_tree.insert(collision.a);
+                self.quad_tree.insert(Arc::clone(&collision.a));
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.insert(collision.b);
+                self.quad_tree.insert(Arc::clone(&collision.b));
             }
         }
+
+        collisions
     }
 
     #[must_use]
