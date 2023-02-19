@@ -1,9 +1,8 @@
 use std::mem;
-use std::sync::{Arc, Mutex};
 
 use crate::body::Body;
 use crate::collision::Collision;
-use crate::quad_tree::{self, WrappedBody};
+use crate::quad_tree::{self};
 use crate::shape::AABB;
 use crate::Vec2;
 
@@ -15,68 +14,81 @@ const K_SLOP: f32 = 0.01;
 /**
  * Sets velocity in m/s
  */
-fn resolve_collision(a: &mut Body, b: &mut Body, collision: &Collision) {
-    if (a.fixed && b.fixed) || a.sensor || b.sensor {
-        return;
-    }
-    let relative_velocity = &b.velocity - &a.velocity;
-    let velocity_along_normal = relative_velocity.dot(&collision.normal);
+fn resolve_collision(bodies: &mut [Body], collision: &Collision) {
+    let (a_fixed, b_fixed, a_inv_mass, b_inv_mass, impulse_vector) = {
+        let a = bodies.get(collision.a.index).unwrap();
+        let b = bodies.get(collision.b.index).unwrap();
 
-    if velocity_along_normal > 0f32 {
-        return;
-    }
+        if (a.fixed && b.fixed) || a.sensor || b.sensor {
+            return;
+        }
+        let relative_velocity = &b.velocity - &a.velocity;
+        let velocity_along_normal = relative_velocity.dot(&collision.normal);
 
-    let restitution = a.restitution.min(b.restitution);
-    let mut impulse = -(1.0 + restitution) * velocity_along_normal;
+        if velocity_along_normal > 0f32 {
+            return;
+        }
 
-    impulse = match (a.fixed, b.fixed) {
-        (false, false) => impulse / (a.inv_mass + b.inv_mass),
-        (false, true) => impulse / a.inv_mass,
-        (true, false) => impulse / b.inv_mass,
-        _ => impulse, // this will never happen
+        let restitution = a.restitution.min(b.restitution);
+        let mut impulse = -(1.0 + restitution) * velocity_along_normal;
+
+        impulse = match (a.fixed, b.fixed) {
+            (false, false) => impulse / (a.inv_mass + b.inv_mass),
+            (false, true) => impulse / a.inv_mass,
+            (true, false) => impulse / b.inv_mass,
+            _ => impulse, // this will never happen
+        };
+
+        let impulse_vector = impulse * &collision.normal;
+
+        (a.fixed, b.fixed, a.inv_mass, b.inv_mass, impulse_vector)
     };
 
-    let impulse_vector = impulse * &collision.normal;
-
-    if !a.fixed {
-        a.velocity -= a.inv_mass * &impulse_vector;
+    if !a_fixed {
+        bodies.get_mut(collision.a.index).unwrap().velocity -= a_inv_mass * &impulse_vector;
     }
-    if !b.fixed {
-        b.velocity += b.inv_mass * &impulse_vector;
+    if !b_fixed {
+        bodies.get_mut(collision.b.index).unwrap().velocity += b_inv_mass * &impulse_vector;
     }
 }
 
-fn correct_position(a: &mut Body, b: &mut Body, collision: &Collision) {
-    if a.fixed && b.fixed || a.sensor || b.sensor {
-        return;
-    }
+fn correct_position(bodies: &mut [Body], collision: &Collision) {
+    let (a_fixed, b_fixed, a_inv_mass, b_inv_mass, correction) = {
+        let a = bodies.get(collision.a.index).unwrap();
+        let b = bodies.get(collision.b.index).unwrap();
 
-    let maximum = 0f32.max(collision.penetration_depth - K_SLOP);
+        if a.fixed && b.fixed || a.sensor || b.sensor {
+            return;
+        }
 
-    let correction_scalar = if b.fixed {
-        maximum / a.inv_mass * PENETRATION_PERCENTAGE
-    } else if a.fixed {
-        maximum / b.inv_mass * PENETRATION_PERCENTAGE
-    } else {
-        maximum / (a.inv_mass + b.inv_mass) * PENETRATION_PERCENTAGE
+        let maximum = 0f32.max(collision.penetration_depth - K_SLOP);
+
+        let correction_scalar = if b.fixed {
+            maximum / a.inv_mass * PENETRATION_PERCENTAGE
+        } else if a.fixed {
+            maximum / b.inv_mass * PENETRATION_PERCENTAGE
+        } else {
+            maximum / (a.inv_mass + b.inv_mass) * PENETRATION_PERCENTAGE
+        };
+
+        let correction = &collision.normal * correction_scalar;
+        (a.fixed, b.fixed, a.inv_mass, b.inv_mass, correction)
     };
-
-    let correction = &collision.normal * correction_scalar;
-    if !a.fixed {
-        a.position -= a.inv_mass * &correction;
+    if !a_fixed {
+        bodies.get_mut(collision.a.index).unwrap().position -= a_inv_mass * &correction;
     }
-    if !b.fixed {
-        b.position += b.inv_mass * &correction;
+    if !b_fixed {
+        bodies.get_mut(collision.b.index).unwrap().position += b_inv_mass * &correction;
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BodyHandle {
-    index: usize,
+    pub index: usize,
 }
 
 pub struct PhysicsWorld {
-    bodies: Vec<WrappedBody>,
+    pub bodies: Vec<Body>,
     removed_indices: Vec<usize>,
     pub quad_tree: quad_tree::QuadTree,
 }
@@ -93,99 +105,90 @@ impl Default for PhysicsWorld {
 
 impl PhysicsWorld {
     pub fn add_body(&mut self, body: Body) -> BodyHandle {
-        let body_mutex = Arc::new(Mutex::new(body));
-
         if let Some(removed_index) = self.removed_indices.pop() {
-            mem::replace(
-                self.bodies.get_mut(removed_index).unwrap(),
-                Arc::clone(&body_mutex),
-            );
+            mem::replace(self.bodies.get_mut(removed_index).unwrap(), body);
             return BodyHandle {
                 index: removed_index,
             };
         }
-        self.bodies.push(Arc::clone(&body_mutex));
-        self.quad_tree.insert(body_mutex);
-        BodyHandle {
+        self.bodies.push(body);
+        let handle = BodyHandle {
             index: self.bodies.len() - 1,
-        }
+        };
+        self.quad_tree.insert(handle.clone(), &self.bodies);
+        handle
     }
 
     pub fn remove_body(&mut self, handle: BodyHandle) {
         self.removed_indices.push(handle.index);
-        let body_mutex = self.bodies.get(handle.index).unwrap();
-        self.quad_tree.remove(body_mutex);
+        self.quad_tree.remove(&handle, &self.bodies);
     }
 
-    pub fn get_body(&self, handle: &BodyHandle) -> Option<&WrappedBody> {
+    pub fn remove_from_quad_tree(&mut self, handle: &BodyHandle) {
+        self.quad_tree.remove(handle, &self.bodies);
+    }
+
+    pub fn insert_into_quad_tree(&mut self, handle: &BodyHandle) {
+        self.quad_tree.insert(handle.clone(), &self.bodies);
+    }
+
+    pub fn get_body(&self, handle: &BodyHandle) -> Option<&Body> {
         self.bodies.get(handle.index)
     }
 
-    pub fn get_body_mut(&mut self, handle: BodyHandle) -> Option<&mut WrappedBody> {
+    pub fn get_body_mut(&mut self, handle: &BodyHandle) -> Option<&mut Body> {
         self.bodies.get_mut(handle.index)
     }
 
     fn calc_velocity(&mut self, dt: f32) {
         // Update position of bodies based on velocity
-        for body_mutex in &mut self.bodies {
-            // Apply force in body
-            let mut body_mut = body_mutex.lock().unwrap();
+        for body in &mut self.bodies {
             // TODO: Fix force code
             // this is not really using any fancy physics, it's just me (???!!!)
-            let linear_acceleration = &body_mut.force / body_mut.mass;
-            body_mut.velocity = &body_mut.velocity + linear_acceleration * dt;
+            let linear_acceleration = &body.force / body.mass;
+            body.velocity = &body.velocity + linear_acceleration * dt;
             // Force has been applied, reset it in body
-            body_mut.force = Vec2::new(0f32, 0f32);
+            body.force = Vec2::new(0f32, 0f32);
 
             // Apply friction based on surface
-            let friction_val = (body_mut.friction * &body_mut.velocity) * dt;
-            body_mut.velocity -= friction_val;
+            let friction_val = (body.friction * &body.velocity) * dt;
+            body.velocity -= friction_val;
 
-            if body_mut.velocity.abs() < Vec2::new(0.1, 0.1) {
-                body_mut.velocity = Vec2::new(0f32, 0f32);
+            if body.velocity.abs() < Vec2::new(0.1, 0.1) {
+                body.velocity = Vec2::new(0f32, 0f32);
             }
 
-            body_mut.position = &body_mut.position + &body_mut.velocity * dt;
+            body.position = &body.position + &body.velocity * dt;
         }
     }
 
     pub fn update_with_quad(&mut self, dt: f32) -> Vec<Collision> {
         self.calc_velocity(dt);
-        let collisions = self.quad_tree.check_collisions();
+        let collisions = self.quad_tree.check_collisions(&self.bodies);
 
         for collision in &collisions {
-            let a_sensor_or_fixed = collision
-                .a
-                .lock()
+            let a_sensor_or_fixed = self
+                .get_body(&collision.a)
                 .map_or(false, |a_body| a_body.fixed || a_body.sensor);
-            let b_sensor_or_fixed = collision
-                .b
-                .lock()
+            let b_sensor_or_fixed = self
+                .get_body(&collision.b)
                 .map_or(false, |b_body| b_body.fixed || b_body.sensor);
 
             if !a_sensor_or_fixed {
-                self.quad_tree.remove(&collision.a);
+                self.quad_tree.remove(&collision.a, &self.bodies);
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.remove(&collision.b);
+                self.quad_tree.remove(&collision.b, &self.bodies);
             }
 
-            resolve_collision(
-                &mut collision.a.lock().unwrap(),
-                &mut collision.b.lock().unwrap(),
-                collision,
-            );
-            correct_position(
-                &mut collision.a.lock().unwrap(),
-                &mut collision.b.lock().unwrap(),
-                collision,
-            );
+            resolve_collision(&mut self.bodies, collision);
+            correct_position(&mut self.bodies, collision);
 
             if !a_sensor_or_fixed {
-                self.quad_tree.insert(Arc::clone(&collision.a));
+                self.quad_tree.insert(collision.a.clone(), &self.bodies);
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.insert(Arc::clone(&collision.b));
+                self.quad_tree.insert(collision.b.clone(), &self.bodies);
             }
         }
 

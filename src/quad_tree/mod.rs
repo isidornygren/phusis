@@ -1,9 +1,7 @@
-use crate::body::Body;
 use crate::checks::check_collision;
 use crate::collision::Collision;
 use crate::shape::AABB;
-
-use std::sync::{Arc, Mutex};
+use crate::{body::Body, world::BodyHandle};
 
 const MAX_DEPTH: u8 = 8;
 const MAX_CHILDREN: usize = 16;
@@ -15,8 +13,6 @@ enum QuadCorner {
     BottomRight,
 }
 
-pub type WrappedBody = Arc<Mutex<Body>>;
-
 /**
  * TODO: AABB should be integer based here
  */
@@ -25,7 +21,7 @@ pub type WrappedBody = Arc<Mutex<Body>>;
 pub struct QuadTree {
     bounds: AABB,
     level: u8,
-    children: Vec<WrappedBody>,
+    children: Vec<BodyHandle>,
     nodes: Option<[Box<QuadTree>; 4]>,
 }
 
@@ -41,10 +37,11 @@ impl QuadTree {
     /**
      * Inserts an items into the quad tree
      */
-    pub fn insert(&mut self, body: WrappedBody) {
-        let index = self.get_index(&body.lock().unwrap().get_aabb());
+    pub fn insert(&mut self, body: BodyHandle, bodies: &Vec<Body>) {
+        let body_aabb = bodies.get(body.index).unwrap().get_aabb();
+        let index = self.get_index(&body_aabb);
         if let (Some(nodes), Some(i)) = (&mut self.nodes, index) {
-            nodes[i].insert(body);
+            nodes[i].insert(body, bodies);
             return;
         }
         self.children.push(body);
@@ -54,11 +51,11 @@ impl QuadTree {
             }
             let mut i = 0;
             while i < self.children.len() {
-                let aabb = self.children[i].lock().unwrap().get_aabb();
+                let aabb = bodies.get(self.children[i].index).unwrap().get_aabb();
                 match self.get_index(&aabb) {
                     Some(quadrant_index) => {
                         self.nodes.as_mut().unwrap()[quadrant_index]
-                            .insert(self.children.remove(i));
+                            .insert(self.children.remove(i), bodies);
                     }
                     None => {
                         i += 1;
@@ -70,21 +67,20 @@ impl QuadTree {
     /**
      * Removes an element from the quad tree
      */
-    pub fn remove(&mut self, body: &WrappedBody) {
+    pub fn remove(&mut self, body_handle: &BodyHandle, bodies: &Vec<Body>) {
         if let Some(index) = self
             .children
             .iter()
-            .position(|child| Arc::ptr_eq(body, child))
+            .position(|child| body_handle.index == child.index)
         {
             // Remove that index
             self.children.remove(index);
         } else {
             // Traverse to a child quad tree
-            let unlocked_body = body.lock().unwrap();
-            if let Some(quadrant_index) = self.get_index(&unlocked_body.get_aabb()) {
-                drop(unlocked_body);
+            let body = bodies.get(body_handle.index).unwrap();
+            if let Some(quadrant_index) = self.get_index(&body.get_aabb()) {
                 if let Some(node) = self.nodes.as_mut() {
-                    node[quadrant_index].remove(body);
+                    node[quadrant_index].remove(body_handle, bodies);
                 } else {
                     println!("Quadrant {} not found on quad tree", quadrant_index);
                     unreachable!();
@@ -162,7 +158,7 @@ impl QuadTree {
      * Retrieves all items in the same node as the specified item, if the specified item
      * overlaps the bounds of a node, then all nodes from the parent node will be retrieved
      */
-    pub fn retrieve(&self, item: AABB) -> Vec<WrappedBody> {
+    pub fn retrieve(&self, item: AABB) -> Vec<BodyHandle> {
         let _index = self.get_index(&item);
         if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
             nodes[i].retrieve(item)
@@ -171,13 +167,13 @@ impl QuadTree {
         }
     }
 
-    pub fn get_children(&self) -> Vec<WrappedBody> {
+    pub fn get_children(&self) -> Vec<BodyHandle> {
         let mut nodes_children = self.get_node_children();
         nodes_children.extend(self.children.clone());
         nodes_children
     }
 
-    pub fn get_node_children(&self) -> Vec<WrappedBody> {
+    pub fn get_node_children(&self) -> Vec<BodyHandle> {
         let mut nodes_children = vec![];
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
@@ -187,7 +183,7 @@ impl QuadTree {
         nodes_children
     }
 
-    pub fn check_collisions(&self) -> Vec<Collision> {
+    pub fn check_collisions(&self, bodies: &Vec<Body>) -> Vec<Collision> {
         let mut collisions: Vec<Collision> = vec![];
         // first check for collision if there is a node child
         // with ALL the children
@@ -196,14 +192,18 @@ impl QuadTree {
         // sub children
         for (i, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
+            let a_body = bodies.get(a.index).unwrap();
             for b in &self.children[(i + 1)..] {
-                if let Some(collision) = check_collision(a, b) {
+                let b_body = bodies.get(b.index).unwrap();
+                if let Some(collision) = check_collision(a_body, b_body, a, b) {
                     collisions.push(collision);
                 }
             }
             // check for collisions with sub children
             for sub_child in &sub_children {
-                if let Some(collision) = check_collision(a, sub_child) {
+                let sub_child_body = bodies.get(sub_child.index).unwrap();
+
+                if let Some(collision) = check_collision(a_body, sub_child_body, a, sub_child) {
                     collisions.push(collision);
                 }
             }
@@ -211,7 +211,7 @@ impl QuadTree {
         // Go deeper!
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
-                collisions.extend(node.check_collisions());
+                collisions.extend(node.check_collisions(bodies));
             }
         }
         collisions
@@ -230,8 +230,6 @@ impl QuadTree {
 
 #[cfg(test)]
 mod tests {
-    use std::default;
-
     use crate::{
         shape::{Circle, Shape},
         Vec2,
@@ -242,10 +240,14 @@ mod tests {
     #[test]
     fn it_inserts_maximum_children() {
         let mut quad_tree = QuadTree::new(0, AABB::new(-1f32, -1f32, 1f32, 1f32));
+        let mut bodies = vec![];
 
         for _ in 0..MAX_CHILDREN {
-            let body = Arc::new(Mutex::new(Body::default()));
-            quad_tree.insert(body);
+            bodies.push(Body::default());
+            let handle = BodyHandle {
+                index: bodies.len() - 1,
+            };
+            quad_tree.insert(handle, &bodies);
         }
 
         assert_eq!(quad_tree.children.len(), MAX_CHILDREN)
@@ -254,13 +256,14 @@ mod tests {
     #[test]
     fn is_splits_into_quadrants() {
         let mut quad_tree = QuadTree::new(0, AABB::new(-10f32, -10f32, 10f32, 10f32));
+        let mut bodies = vec![];
 
         let length = MAX_CHILDREN * 4;
         for i in 0..length {
             let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
             let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
 
-            let body = Arc::new(Mutex::new(Body::new(
+            let body = Body::new(
                 1.0,
                 1.0,
                 Shape::Circle(Circle::new(0.1)),
@@ -268,8 +271,12 @@ mod tests {
                 false,
                 false,
                 Body::default().entity,
-            )));
-            quad_tree.insert(body);
+            );
+            bodies.push(body);
+            let handle = BodyHandle {
+                index: bodies.len() - 1,
+            };
+            quad_tree.insert(handle, &bodies);
         }
 
         assert_eq!(quad_tree.children.len(), 0);
@@ -295,15 +302,15 @@ mod tests {
     #[test]
     fn it_removes_body() {
         let mut quad_tree = QuadTree::new(0, AABB::new(-10f32, -10f32, 10f32, 10f32));
-
         let mut bodies = vec![];
+        let mut bodies_to_remove = vec![];
 
         let length = MAX_CHILDREN * 4;
         for i in 0..length {
             let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
             let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
 
-            let body = Arc::new(Mutex::new(Body::new(
+            let body = Body::new(
                 1.0,
                 1.0,
                 Shape::Circle(Circle::new(0.1)),
@@ -311,14 +318,18 @@ mod tests {
                 false,
                 false,
                 Body::default().entity,
-            )));
+            );
+            bodies.push(body);
+            let handle = BodyHandle {
+                index: bodies.len() - 1,
+            };
             if x == -10.0 && y == -10.0 {
-                bodies.push(Arc::clone(&body));
+                bodies_to_remove.push(handle.clone());
             }
-            quad_tree.insert(body);
+            quad_tree.insert(handle, &bodies);
         }
-        bodies.iter().for_each(|body| {
-            quad_tree.remove(body);
+        bodies_to_remove.iter().for_each(|body| {
+            quad_tree.remove(body, &bodies);
         });
         assert_eq!(quad_tree.children.len(), 0);
         assert_eq!(

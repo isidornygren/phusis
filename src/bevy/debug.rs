@@ -18,7 +18,7 @@ fn debug_physics(
             (false, false) => Color::RED,
         };
 
-        let scale = 6.0; // transform.scale.x;
+        let scale = 1.0; // transform.scale.x;
 
         match &body.shape {
             Shape::Circle(circle) => {

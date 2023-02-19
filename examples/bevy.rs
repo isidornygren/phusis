@@ -2,7 +2,6 @@ use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
 };
-use bevy_prototype_lyon::prelude::ShapePlugin;
 use phusis::{
     bevy::{Collider, PhusisBevyPlugin, Sensor},
     shape::{Circle, Shape, AABB},
@@ -19,7 +18,7 @@ fn add_bodies(mut commands: Commands) {
     for _ in 0..10000 {
         let x = rng.gen_range(-500..500) as f32;
         let y = rng.gen_range(-500..500) as f32;
-        let radius = 4.0;
+        let radius = 10.0;
 
         commands
             .spawn(Transform::from_xyz(x, y, 1.0))
@@ -67,7 +66,6 @@ fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
-        .add_plugin(ShapePlugin)
         .add_plugin(PhusisBevyPlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
