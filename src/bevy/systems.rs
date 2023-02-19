@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use crate::{
+    bevy::components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor},
     body::Body,
-    components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor},
     Vec2,
 };
 
