@@ -23,10 +23,10 @@ fn add_bodies(mut commands: Commands) {
         commands
             .spawn(Transform::from_xyz(x, y, 1.0))
             .insert(Collider {
-                mass: 1.0,
-                shape: Shape::Circle(Circle::new(radius)),
+                mass:         1.0,
+                shape:        Shape::Circle(Circle::new(radius)),
                 constitution: 1.0,
-                fixed: false,
+                fixed:        false,
             });
     }
 

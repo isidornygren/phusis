@@ -25,10 +25,10 @@ pub fn check_collision(
         ),
         (Shape::AABB(a_aabb), Shape::AABB(b_aabb)) => {
             aabb_vs_aabb(a_aabb, b_aabb, a_position, b_position, a_handle, b_handle)
-        }
+        },
         (Shape::Circle(circle), Shape::AABB(aabb)) | (Shape::AABB(aabb), Shape::Circle(circle)) => {
             aabb_vs_circle(aabb, circle, a_position, b_position, a_handle, b_handle)
-        }
+        },
     }
 }
 
@@ -50,17 +50,17 @@ pub fn aabb_vs_aabb(
         let sign_x = pos_diff.x.signum();
         return Some(Collision {
             penetration_depth: penetration.x * sign_x,
-            normal: Vec2::new(sign_x, 0f32),
-            a: a_handle.clone(),
-            b: b_handle.clone(),
+            normal:            Vec2::new(sign_x, 0f32),
+            a:                 a_handle.clone(),
+            b:                 b_handle.clone(),
         });
     }
     let sign_y = pos_diff.y.signum();
     Some(Collision {
         penetration_depth: penetration.y * sign_y,
-        normal: Vec2::new(0f32, sign_y),
-        a: a_handle.clone(),
-        b: b_handle.clone(),
+        normal:            Vec2::new(0f32, sign_y),
+        a:                 a_handle.clone(),
+        b:                 b_handle.clone(),
     })
 }
 
@@ -86,18 +86,18 @@ pub fn circle_vs_circle(
     if distance != 0f32 {
         return Some(Collision {
             penetration_depth: (a_circle.radius + b_circle.radius) - distance,
-            normal: normal / distance,
-            a: a_handle.clone(),
-            b: b_handle.clone(),
+            normal:            normal / distance,
+            a:                 a_handle.clone(),
+            b:                 b_handle.clone(),
         });
     }
     // Circles are on the same position
     // Choose random (but consistent) values
     Some(Collision {
         penetration_depth: a_circle.radius,
-        normal: Vec2::new(1f32, 0f32),
-        a: a_handle.clone(),
-        b: b_handle.clone(),
+        normal:            Vec2::new(1f32, 0f32),
+        a:                 a_handle.clone(),
+        b:                 b_handle.clone(),
     })
 }
 
@@ -152,16 +152,16 @@ pub fn aabb_vs_circle(
     if inside {
         Some(Collision {
             penetration_depth: (radius - distance_sqr),
-            normal: &normal / radius,
-            a: a_handle.clone(),
-            b: b_handle.clone(),
+            normal:            &normal / radius,
+            a:                 a_handle.clone(),
+            b:                 b_handle.clone(),
         })
     } else {
         Some(Collision {
             penetration_depth: (radius - distance_sqr),
-            normal: &normal / distance,
-            a: a_handle.clone(),
-            b: b_handle.clone(),
+            normal:            &normal / distance,
+            a:                 a_handle.clone(),
+            b:                 b_handle.clone(),
         })
     }
 }

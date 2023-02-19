@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
-use crate::{body::Body, Vec2};
-
-use super::components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor};
+use crate::{
+    body::Body,
+    components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor},
+    Vec2,
+};
 
 pub fn on_body_change(
     mut commands: Commands,

@@ -12,10 +12,10 @@ pub struct PhysicsWorldResource {
 
 #[derive(Component)]
 pub struct Collider {
-    pub shape: Shape,
-    pub mass: f32,
+    pub shape:        Shape,
+    pub mass:         f32,
     pub constitution: f32,
-    pub fixed: bool,
+    pub fixed:        bool,
 }
 
 #[derive(Component, Default)]

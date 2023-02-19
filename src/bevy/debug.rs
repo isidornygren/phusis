@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 
-use crate::{bevy::components::Sensor, shape::Shape};
-
 use super::components::Collider;
+use crate::{bevy::components::Sensor, shape::Shape};
 
 fn debug_physics(
     mut commands: Commands,
@@ -30,12 +29,12 @@ fn debug_physics(
                 commands.entity(entity).insert(GeometryBuilder::build_as(
                     &shape,
                     DrawMode::Outlined {
-                        fill_mode: FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+                        fill_mode:    FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
                         outline_mode: StrokeMode::new(color, 1.0 / scale),
                     },
                     *transform,
                 ));
-            }
+            },
             Shape::AABB(aabb) => {
                 let shape = shapes::Rectangle {
                     extents: Vec2::new(aabb.get_width() / scale, aabb.get_height() / scale),
@@ -44,12 +43,12 @@ fn debug_physics(
                 commands.entity(entity).insert(GeometryBuilder::build_as(
                     &shape,
                     DrawMode::Outlined {
-                        fill_mode: FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+                        fill_mode:    FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
                         outline_mode: StrokeMode::new(color, 1.0 / scale),
                     },
                     *transform,
                 ));
-            }
+            },
         };
     }
 }

@@ -1,7 +1,10 @@
-use crate::checks::check_collision;
-use crate::collision::Collision;
-use crate::shape::AABB;
-use crate::{body::Body, world::BodyHandle};
+use crate::{
+    body::Body,
+    checks::check_collision,
+    collision::Collision,
+    shape::AABB,
+    world::BodyHandle,
+};
 
 const MAX_DEPTH: u8 = 8;
 const MAX_CHILDREN: usize = 16;
@@ -19,10 +22,10 @@ enum QuadCorner {
 
 #[derive(Debug)]
 pub struct QuadTree {
-    bounds: AABB,
-    level: u8,
+    bounds:   AABB,
+    level:    u8,
     children: Vec<BodyHandle>,
-    nodes: Option<[Box<QuadTree>; 4]>,
+    nodes:    Option<[Box<QuadTree>; 4]>,
 }
 
 impl QuadTree {
@@ -34,6 +37,7 @@ impl QuadTree {
             nodes: None,
         }
     }
+
     /**
      * Inserts an items into the quad tree
      */
@@ -56,14 +60,15 @@ impl QuadTree {
                     Some(quadrant_index) => {
                         self.nodes.as_mut().unwrap()[quadrant_index]
                             .insert(self.children.remove(i), bodies);
-                    }
+                    },
                     None => {
                         i += 1;
-                    }
+                    },
                 }
             }
         }
     }
+
     /**
      * Removes an element from the quad tree
      */
@@ -88,6 +93,7 @@ impl QuadTree {
             }
         }
     }
+
     /**
      * Clears all items from a quad tree
      */
@@ -95,6 +101,7 @@ impl QuadTree {
         self.children.clear();
         self.nodes = None;
     }
+
     /**
      * Splits a node into 4 subnodes
      */
@@ -127,6 +134,7 @@ impl QuadTree {
             )),
         ]);
     }
+
     /**
      * Determine which node the object belongs to
      */
@@ -153,6 +161,7 @@ impl QuadTree {
         }
         None
     }
+
     /**
      * Retrieves all items in the same node as the specified item, if the specified item
      * overlaps the bounds of a node, then all nodes from the parent node will be retrieved
@@ -229,12 +238,11 @@ impl QuadTree {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         shape::{Circle, Shape},
         Vec2,
     };
-
-    use super::*;
 
     #[test]
     fn it_inserts_maximum_children() {

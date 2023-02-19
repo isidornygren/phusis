@@ -82,16 +82,16 @@ pub struct BodyHandle {
 }
 
 pub struct PhysicsWorld {
-    pub bodies: Vec<Body>,
+    pub bodies:      Vec<Body>,
     removed_indices: Vec<usize>,
-    pub quad_tree: QuadTree,
+    pub quad_tree:   QuadTree,
 }
 
 impl Default for PhysicsWorld {
     fn default() -> Self {
         Self {
-            bodies: vec![],
-            quad_tree: QuadTree::new(0, AABB::new(-1000f32, -1000f32, 1000f32, 1000f32)),
+            bodies:          vec![],
+            quad_tree:       QuadTree::new(0, AABB::new(-1000f32, -1000f32, 1000f32, 1000f32)),
             removed_indices: vec![],
         }
     }

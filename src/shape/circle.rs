@@ -3,7 +3,7 @@ use crate::shape::AABB;
 #[derive(Debug, Clone)]
 pub struct Circle {
     pub radius: f32,
-    aabb: AABB,
+    aabb:       AABB,
 }
 
 impl Circle {

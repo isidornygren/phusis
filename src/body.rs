@@ -1,24 +1,25 @@
 #[cfg(feature = "bevy")]
 use bevy::prelude::Entity;
 
-use crate::shape::{Circle, Shape, AABB};
-
-use crate::Vec2;
+use crate::{
+    shape::{Circle, Shape, AABB},
+    Vec2,
+};
 
 #[derive(Debug)]
 pub struct Body {
-    pub position: Vec2,
-    pub velocity: Vec2,
-    pub force: Vec2, // TODO: is this needed
-    pub mass: f32,
-    pub inv_mass: f32,
+    pub position:    Vec2,
+    pub velocity:    Vec2,
+    pub force:       Vec2, // TODO: is this needed
+    pub mass:        f32,
+    pub inv_mass:    f32,
     pub restitution: f32,
-    pub shape: Shape,
-    pub friction: f32,
-    pub fixed: bool,
-    pub sensor: bool,
+    pub shape:       Shape,
+    pub friction:    f32,
+    pub fixed:       bool,
+    pub sensor:      bool,
     #[cfg(feature = "bevy")]
-    pub entity: Entity,
+    pub entity:      Entity,
 }
 
 impl Default for Body {

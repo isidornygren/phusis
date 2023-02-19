@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::ShapePlugin;
 
-use crate::world::PhysicsWorld;
-
-use self::components::PhysicsWorldResource;
+use crate::{components::PhysicsWorldResource, world::PhysicsWorld};
 
 mod components;
 #[cfg(feature = "bevy_debug")]
