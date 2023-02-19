@@ -1,10 +1,6 @@
 use std::mem;
 
-use crate::body::Body;
-use crate::collision::Collision;
-use crate::quad_tree::{self};
-use crate::shape::AABB;
-use crate::Vec2;
+use crate::{body::Body, collision::Collision, quad_tree::QuadTree, shape::AABB, Vec2};
 
 // High percentage = no penetration
 const PENETRATION_PERCENTAGE: f32 = 0.5;
@@ -90,14 +86,14 @@ pub struct BodyHandle {
 pub struct PhysicsWorld {
     pub bodies: Vec<Body>,
     removed_indices: Vec<usize>,
-    pub quad_tree: quad_tree::QuadTree,
+    pub quad_tree: QuadTree,
 }
 
 impl Default for PhysicsWorld {
     fn default() -> Self {
         Self {
             bodies: vec![],
-            quad_tree: quad_tree::QuadTree::new(0, AABB::new(-1000f32, -1000f32, 1000f32, 1000f32)),
+            quad_tree: QuadTree::new(0, AABB::new(-1000f32, -1000f32, 1000f32, 1000f32)),
             removed_indices: vec![],
         }
     }
@@ -106,7 +102,7 @@ impl Default for PhysicsWorld {
 impl PhysicsWorld {
     pub fn add_body(&mut self, body: Body) -> BodyHandle {
         if let Some(removed_index) = self.removed_indices.pop() {
-            mem::replace(self.bodies.get_mut(removed_index).unwrap(), body);
+            *self.bodies.get_mut(removed_index).unwrap() = body;
             return BodyHandle {
                 index: removed_index,
             };
