@@ -9,6 +9,12 @@ use crate::{
 const MAX_DEPTH: u8 = 8;
 const MAX_CHILDREN: usize = 16;
 
+#[derive(Debug, Clone)]
+pub struct QuadElement {
+    pub aabb:   AABB,
+    pub handle: BodyHandle,
+}
+
 enum QuadCorner {
     TopLeft = 0,
     TopRight,
@@ -19,12 +25,11 @@ enum QuadCorner {
 /**
  * TODO: AABB should be integer based here
  */
-
 #[derive(Debug)]
 pub struct QuadTree {
     bounds:   AABB,
     level:    u8,
-    children: Vec<BodyHandle>,
+    children: Vec<QuadElement>,
     nodes:    Option<[Box<QuadTree>; 4]>,
 }
 
@@ -41,25 +46,24 @@ impl QuadTree {
     /**
      * Inserts an items into the quad tree
      */
-    pub fn insert(&mut self, body: BodyHandle, bodies: &Vec<Body>) {
-        let body_aabb = bodies.get(body.index).unwrap().get_aabb();
-        let index = self.get_index(&body_aabb);
+    pub fn insert(&mut self, element: QuadElement) {
+        let index = self.get_index(&element.aabb);
         if let (Some(nodes), Some(i)) = (&mut self.nodes, index) {
-            nodes[i].insert(body, bodies);
+            nodes[i].insert(element);
             return;
         }
-        self.children.push(body);
+        self.children.push(element);
         if self.children.len() > MAX_CHILDREN && self.level < MAX_DEPTH {
             if self.nodes.is_none() {
                 self.split();
             }
             let mut i = 0;
             while i < self.children.len() {
-                let aabb = bodies.get(self.children[i].index).unwrap().get_aabb();
-                match self.get_index(&aabb) {
+                let element = &self.children[i];
+                match self.get_index(&element.aabb) {
                     Some(quadrant_index) => {
                         self.nodes.as_mut().unwrap()[quadrant_index]
-                            .insert(self.children.remove(i), bodies);
+                            .insert(self.children.remove(i));
                     },
                     None => {
                         i += 1;
@@ -72,23 +76,24 @@ impl QuadTree {
     /**
      * Removes an element from the quad tree
      */
-    pub fn remove(&mut self, body_handle: &BodyHandle, bodies: &Vec<Body>) {
+    pub fn remove(&mut self, element: QuadElement) {
         if let Some(index) = self
             .children
             .iter()
-            .position(|child| body_handle.index == child.index)
+            .position(|child| element.handle.index == child.handle.index)
         {
             // Remove that index
             self.children.remove(index);
         } else {
             // Traverse to a child quad tree
-            let body = bodies.get(body_handle.index).unwrap();
-            if let Some(quadrant_index) = self.get_index(&body.get_aabb()) {
+            if let Some(quadrant_index) = self.get_index(&element.aabb) {
                 if let Some(node) = self.nodes.as_mut() {
-                    node[quadrant_index].remove(body_handle, bodies);
+                    node[quadrant_index].remove(element);
                 } else {
-                    println!("Quadrant {} not found on quad tree", quadrant_index);
-                    unreachable!();
+                    unreachable!(
+                        "Quadrant {} not found on quad tree\nElement: {:?}",
+                        quadrant_index, element
+                    );
                 }
             }
         }
@@ -166,7 +171,7 @@ impl QuadTree {
      * Retrieves all items in the same node as the specified item, if the specified item
      * overlaps the bounds of a node, then all nodes from the parent node will be retrieved
      */
-    pub fn retrieve(&self, item: AABB) -> Vec<BodyHandle> {
+    pub fn retrieve(&self, item: AABB) -> Vec<QuadElement> {
         let _index = self.get_index(&item);
         if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
             nodes[i].retrieve(item)
@@ -175,13 +180,13 @@ impl QuadTree {
         }
     }
 
-    pub fn get_children(&self) -> Vec<BodyHandle> {
+    pub fn get_children(&self) -> Vec<QuadElement> {
         let mut nodes_children = self.get_node_children();
         nodes_children.extend(self.children.clone());
         nodes_children
     }
 
-    pub fn get_node_children(&self) -> Vec<BodyHandle> {
+    pub fn get_node_children(&self) -> Vec<QuadElement> {
         let mut nodes_children = vec![];
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
@@ -200,18 +205,20 @@ impl QuadTree {
         // sub children
         for (i, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
-            let a_body = bodies.get(a.index).unwrap();
+            let a_body = bodies.get(a.handle.index).unwrap();
             for b in &self.children[(i + 1)..] {
-                let b_body = bodies.get(b.index).unwrap();
-                if let Some(collision) = check_collision(a_body, b_body, a, b) {
+                let b_body = bodies.get(b.handle.index).unwrap();
+                if let Some(collision) = check_collision(a_body, b_body, &a.handle, &b.handle) {
                     collisions.push(collision);
                 }
             }
             // check for collisions with sub children
             for sub_child in &sub_children {
-                let sub_child_body = bodies.get(sub_child.index).unwrap();
+                let sub_child_body = bodies.get(sub_child.handle.index).unwrap();
 
-                if let Some(collision) = check_collision(a_body, sub_child_body, a, sub_child) {
+                if let Some(collision) =
+                    check_collision(a_body, sub_child_body, &a.handle, &sub_child.handle)
+                {
                     collisions.push(collision);
                 }
             }
@@ -250,14 +257,18 @@ mod tests {
         let mut bodies = vec![];
 
         for _ in 0..MAX_CHILDREN {
-            bodies.push(Body::default());
+            let body = Body::default();
             let handle = BodyHandle {
-                index: bodies.len() - 1,
+                index: bodies.len(),
             };
-            quad_tree.insert(handle, &bodies);
+            quad_tree.insert(QuadElement {
+                handle,
+                aabb: body.get_aabb(),
+            });
+            bodies.push(body);
         }
 
-        assert_eq!(quad_tree.children.len(), MAX_CHILDREN)
+        assert_eq!(quad_tree.children.len(), MAX_CHILDREN);
     }
 
     #[test]
@@ -279,11 +290,14 @@ mod tests {
                 false,
                 Body::default().entity,
             );
-            bodies.push(body);
             let handle = BodyHandle {
-                index: bodies.len() - 1,
+                index: bodies.len(),
             };
-            quad_tree.insert(handle, &bodies);
+            quad_tree.insert(QuadElement {
+                handle,
+                aabb: body.get_aabb(),
+            });
+            bodies.push(body);
         }
 
         assert_eq!(quad_tree.children.len(), 0);
@@ -326,17 +340,23 @@ mod tests {
                 false,
                 Body::default().entity,
             );
-            bodies.push(body);
             let handle = BodyHandle {
-                index: bodies.len() - 1,
+                index: bodies.len(),
             };
             if x == -10.0 && y == -10.0 {
                 bodies_to_remove.push(handle.clone());
             }
-            quad_tree.insert(handle, &bodies);
+            quad_tree.insert(QuadElement {
+                handle,
+                aabb: body.get_aabb(),
+            });
+            bodies.push(body);
         }
-        bodies_to_remove.iter().for_each(|body| {
-            quad_tree.remove(body, &bodies);
+        bodies_to_remove.iter().for_each(|handle| {
+            quad_tree.remove(QuadElement {
+                handle: handle.clone(),
+                aabb:   bodies.get(handle.index).unwrap().get_aabb(),
+            });
         });
         assert_eq!(quad_tree.children.len(), 0);
         assert_eq!(

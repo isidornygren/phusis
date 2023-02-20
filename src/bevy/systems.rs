@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::{
     bevy::components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor},
     body::Body,
+    quad_tree::QuadElement,
     Vec2,
 };
 
@@ -41,9 +42,18 @@ pub fn on_body_transform_change(
         {
             body.position = Vec2::new(transform.translation.x, transform.translation.y);
         }
-        physics_world
+        if let Some(aabb) = physics_world
             .physics_world
-            .insert_into_quad_tree(&body_handle.handle);
+            .get_body(&body_handle.handle)
+            .map(Body::get_aabb)
+        {
+            physics_world
+                .physics_world
+                .insert_into_quad_tree(QuadElement {
+                    aabb,
+                    handle: body_handle.handle.clone(),
+                });
+        }
     }
 }
 

@@ -1,4 +1,10 @@
-use crate::{body::Body, collision::Collision, quad_tree::QuadTree, shape::AABB, Vec2};
+use crate::{
+    body::Body,
+    collision::Collision,
+    quad_tree::{QuadElement, QuadTree},
+    shape::AABB,
+    Vec2,
+};
 
 // High percentage = no penetration
 const PENETRATION_PERCENTAGE: f32 = 0.5;
@@ -100,30 +106,47 @@ impl Default for PhysicsWorld {
 impl PhysicsWorld {
     pub fn add_body(&mut self, body: Body) -> BodyHandle {
         if let Some(removed_index) = self.removed_indices.pop() {
-            *self.bodies.get_mut(removed_index).unwrap() = body;
-            return BodyHandle {
+            let handle = BodyHandle {
                 index: removed_index,
             };
+
+            self.quad_tree.insert(QuadElement {
+                handle: handle.clone(),
+                aabb:   body.get_aabb(),
+            });
+
+            *self.bodies.get_mut(removed_index).unwrap() = body;
+
+            return handle;
         }
-        self.bodies.push(body);
         let handle = BodyHandle {
-            index: self.bodies.len() - 1,
+            index: self.bodies.len(),
         };
-        self.quad_tree.insert(handle.clone(), &self.bodies);
+        self.quad_tree.insert(QuadElement {
+            handle: handle.clone(),
+            aabb:   body.get_aabb(),
+        });
+        self.bodies.push(body);
         handle
     }
 
     pub fn remove_body(&mut self, handle: BodyHandle) {
         self.removed_indices.push(handle.index);
-        self.quad_tree.remove(&handle, &self.bodies);
+        self.quad_tree.remove(QuadElement {
+            handle: handle.clone(),
+            aabb:   self.bodies.get(handle.index).unwrap().get_aabb(),
+        });
     }
 
     pub fn remove_from_quad_tree(&mut self, handle: &BodyHandle) {
-        self.quad_tree.remove(handle, &self.bodies);
+        self.quad_tree.remove(QuadElement {
+            handle: handle.clone(),
+            aabb:   self.bodies.get(handle.index).unwrap().get_aabb(),
+        });
     }
 
-    pub fn insert_into_quad_tree(&mut self, handle: &BodyHandle) {
-        self.quad_tree.insert(handle.clone(), &self.bodies);
+    pub fn insert_into_quad_tree(&mut self, element: QuadElement) {
+        self.quad_tree.insert(element);
     }
 
     #[must_use]
@@ -170,20 +193,32 @@ impl PhysicsWorld {
                 .map_or(false, |b_body| b_body.fixed || b_body.sensor);
 
             if !a_sensor_or_fixed {
-                self.quad_tree.remove(&collision.a, &self.bodies);
+                self.quad_tree.remove(QuadElement {
+                    handle: collision.a.clone(),
+                    aabb:   self.bodies.get(collision.a.index).unwrap().get_aabb(),
+                });
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.remove(&collision.b, &self.bodies);
+                self.quad_tree.remove(QuadElement {
+                    handle: collision.b.clone(),
+                    aabb:   self.bodies.get(collision.b.index).unwrap().get_aabb(),
+                });
             }
 
             resolve_collision(&mut self.bodies, collision);
             correct_position(&mut self.bodies, collision);
 
             if !a_sensor_or_fixed {
-                self.quad_tree.insert(collision.a.clone(), &self.bodies);
+                self.quad_tree.insert(QuadElement {
+                    handle: collision.a.clone(),
+                    aabb:   self.get_body(&collision.a).unwrap().get_aabb(),
+                });
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.insert(collision.b.clone(), &self.bodies);
+                self.quad_tree.insert(QuadElement {
+                    handle: collision.b.clone(),
+                    aabb:   self.get_body(&collision.b).unwrap().get_aabb(),
+                });
             }
         }
 
