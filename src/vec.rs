@@ -1,17 +1,29 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Vec2 {
-    pub x: f32,
-    pub y: f32,
+#[derive(Debug, Clone, PartialEq, PartialOrd, Copy)]
+pub struct Vec2<T> {
+    pub x: T,
+    pub y: T,
 }
 
-impl Vec2 {
+impl<T> Vec2<T> {
     #[must_use]
-    pub fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: T, y: T) -> Self {
         Self { x, y }
     }
+}
 
+impl<T> Vec2<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    #[must_use]
+    pub fn dot(&self, other: &Self) -> T {
+        (self.x * other.x) + (self.y * other.y)
+    }
+}
+
+impl Vec2<f32> {
     #[must_use]
     pub fn abs(&self) -> Self {
         Self {
@@ -19,14 +31,22 @@ impl Vec2 {
             y: self.y.abs(),
         }
     }
+}
 
+impl Vec2<i32> {
     #[must_use]
-    pub fn dot(&self, other: &Self) -> f32 {
-        (self.x * other.x) + (self.y * other.y)
+    pub fn abs(&self) -> Self {
+        Self {
+            x: self.x.abs(),
+            y: self.y.abs(),
+        }
     }
 }
 
-impl Add for Vec2 {
+impl<T> Add for Vec2<T>
+where
+    T: Add<Output = T>,
+{
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
@@ -37,51 +57,21 @@ impl Add for Vec2 {
     }
 }
 
-impl Add<&Vec2> for Vec2 {
-    type Output = Self;
+// impl<T> Add<Vec2<T>> for T {
+//     type Output = Vec2<T>;
 
-    fn add(self, other: &Self) -> Self {
-        Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
-    }
-}
+//     fn add(self, other: Vec2<T>) -> Vec2<T> {
+//         Vec2 {
+//             x: other.x + self,
+//             y: other.y + self,
+//         }
+//     }
+// }
 
-impl Add<Vec2> for &Vec2 {
-    type Output = Vec2;
-
-    fn add(self, other: Vec2) -> Vec2 {
-        Vec2 {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
-    }
-}
-
-impl Add<f32> for Vec2 {
-    type Output = Vec2;
-
-    fn add(self, other: f32) -> Self {
-        Self {
-            x: self.x + other,
-            y: self.y + other,
-        }
-    }
-}
-
-impl Add<Vec2> for f32 {
-    type Output = Vec2;
-
-    fn add(self, other: Vec2) -> Vec2 {
-        Vec2 {
-            x: other.x + self,
-            y: other.y + self,
-        }
-    }
-}
-
-impl AddAssign for Vec2 {
+impl<T> AddAssign for Vec2<T>
+where
+    T: Add<Output = T> + Copy,
+{
     fn add_assign(&mut self, other: Self) {
         *self = Self {
             x: self.x + other.x,
@@ -90,8 +80,11 @@ impl AddAssign for Vec2 {
     }
 }
 
-impl AddAssign<f32> for Vec2 {
-    fn add_assign(&mut self, other: f32) {
+impl<T> AddAssign<T> for Vec2<T>
+where
+    T: Add<Output = T> + Copy,
+{
+    fn add_assign(&mut self, other: T) {
         *self = Self {
             x: self.x + other,
             y: self.y + other,
@@ -99,7 +92,10 @@ impl AddAssign<f32> for Vec2 {
     }
 }
 
-impl Sub for Vec2 {
+impl<T> Sub for Vec2<T>
+where
+    T: Sub<Output = T>,
+{
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
@@ -110,32 +106,13 @@ impl Sub for Vec2 {
     }
 }
 
-impl Sub for &Vec2 {
-    type Output = Vec2;
+impl<T> Sub<T> for Vec2<T>
+where
+    T: Sub<Output = T> + Copy,
+{
+    type Output = Vec2<T>;
 
-    fn sub(self, other: Self) -> Vec2 {
-        Vec2 {
-            x: self.x - other.x,
-            y: self.y - other.y,
-        }
-    }
-}
-
-impl Sub<&Vec2> for Vec2 {
-    type Output = Self;
-
-    fn sub(self, other: &Self) -> Self {
-        Self {
-            x: self.x - other.x,
-            y: self.y - other.y,
-        }
-    }
-}
-
-impl Sub<f32> for Vec2 {
-    type Output = Vec2;
-
-    fn sub(self, other: f32) -> Self {
+    fn sub(self, other: T) -> Self {
         Self {
             x: self.x - other,
             y: self.y - other,
@@ -143,18 +120,21 @@ impl Sub<f32> for Vec2 {
     }
 }
 
-impl Sub<Vec2> for f32 {
-    type Output = Vec2;
+// impl<T> Sub<Vec2<T>> for T {
+//     type Output = Vec2<T>;
 
-    fn sub(self, other: Vec2) -> Vec2 {
-        Vec2 {
-            x: other.x - self,
-            y: other.y - self,
-        }
-    }
-}
+//     fn sub(self, other: Vec2<T>) -> Vec2<T> {
+//         Vec2 {
+//             x: other.x - self,
+//             y: other.y - self,
+//         }
+//     }
+// }
 
-impl SubAssign for Vec2 {
+impl<T> SubAssign for Vec2<T>
+where
+    T: Sub<Output = T> + Copy,
+{
     fn sub_assign(&mut self, other: Self) {
         *self = Self {
             x: self.x - other.x,
@@ -163,8 +143,11 @@ impl SubAssign for Vec2 {
     }
 }
 
-impl SubAssign<f32> for Vec2 {
-    fn sub_assign(&mut self, other: f32) {
+impl<T> SubAssign<T> for Vec2<T>
+where
+    T: Sub<Output = T> + Copy,
+{
+    fn sub_assign(&mut self, other: T) {
         *self = Self {
             x: self.x - other,
             y: self.y - other,
@@ -172,8 +155,11 @@ impl SubAssign<f32> for Vec2 {
     }
 }
 
-impl Mul for Vec2 {
-    type Output = Vec2;
+impl<T> Mul for Vec2<T>
+where
+    T: Mul<Output = T>,
+{
+    type Output = Vec2<T>;
 
     fn mul(self, other: Self) -> Self {
         Self {
@@ -183,10 +169,13 @@ impl Mul for Vec2 {
     }
 }
 
-impl Mul<f32> for Vec2 {
-    type Output = Vec2;
+impl<T> Mul<T> for Vec2<T>
+where
+    T: Mul<Output = T> + Copy,
+{
+    type Output = Vec2<T>;
 
-    fn mul(self, other: f32) -> Self {
+    fn mul(self, other: T) -> Self {
         Self {
             x: self.x * other,
             y: self.y * other,
@@ -194,41 +183,22 @@ impl Mul<f32> for Vec2 {
     }
 }
 
-impl Mul<f32> for &Vec2 {
-    type Output = Vec2;
+// impl<T> Mul<Vec2<T>> for T {
+//     type Output = Vec2<T>;
 
-    fn mul(self, other: f32) -> Vec2 {
-        Vec2 {
-            x: self.x * other,
-            y: self.y * other,
-        }
-    }
-}
+//     fn mul(self, other: Vec2<T>) -> Vec2<T> {
+//         Vec2 {
+//             x: other.x * self,
+//             y: other.y * self,
+//         }
+//     }
+// }
 
-impl Mul<Vec2> for f32 {
-    type Output = Vec2;
-
-    fn mul(self, other: Vec2) -> Vec2 {
-        Vec2 {
-            x: other.x * self,
-            y: other.y * self,
-        }
-    }
-}
-
-impl Mul<&Vec2> for f32 {
-    type Output = Vec2;
-
-    fn mul(self, other: &Vec2) -> Vec2 {
-        Vec2 {
-            x: other.x * self,
-            y: other.y * self,
-        }
-    }
-}
-
-impl Div for Vec2 {
-    type Output = Vec2;
+impl<T> Div for Vec2<T>
+where
+    T: Div<Output = T>,
+{
+    type Output = Vec2<T>;
 
     fn div(self, other: Self) -> Self {
         Self {
@@ -238,10 +208,13 @@ impl Div for Vec2 {
     }
 }
 
-impl Div<f32> for Vec2 {
-    type Output = Vec2;
+impl<T> Div<T> for Vec2<T>
+where
+    T: Div<Output = T> + Copy,
+{
+    type Output = Vec2<T>;
 
-    fn div(self, other: f32) -> Self {
+    fn div(self, other: T) -> Self {
         Self {
             x: self.x / other,
             y: self.y / other,
@@ -249,24 +222,13 @@ impl Div<f32> for Vec2 {
     }
 }
 
-impl Div<f32> for &Vec2 {
-    type Output = Vec2;
+// impl<T> Div<Vec2<T>> for T {
+//     type Output = Vec2<T>;
 
-    fn div(self, other: f32) -> Vec2 {
-        Vec2 {
-            x: self.x / other,
-            y: self.y / other,
-        }
-    }
-}
-
-impl Div<Vec2> for f32 {
-    type Output = Vec2;
-
-    fn div(self, other: Vec2) -> Vec2 {
-        Vec2 {
-            x: other.x / self,
-            y: other.y / self,
-        }
-    }
-}
+//     fn div(self, other: Vec2<T>) -> Vec2<T> {
+//         Vec2 {
+//             x: other.x / self,
+//             y: other.y / self,
+//         }
+//     }
+// }

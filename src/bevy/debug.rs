@@ -17,7 +17,7 @@ fn debug_physics(
             (false, false) => Color::RED,
         };
 
-        let scale = 6.0; // transform.scale.x;
+        let scale = 1.0; // 6.0; // transform.scale.x;
 
         match &body.shape {
             Shape::Circle(circle) => {
@@ -35,9 +35,9 @@ fn debug_physics(
                     *transform,
                 ));
             },
-            Shape::AABB(aabb) => {
+            Shape::Rect(rect) => {
                 let shape = shapes::Rectangle {
-                    extents: Vec2::new(aabb.get_width() / scale, aabb.get_height() / scale),
+                    extents: Vec2::new(rect.x / scale, rect.y / scale),
                     ..default()
                 };
                 commands.entity(entity).insert(GeometryBuilder::build_as(

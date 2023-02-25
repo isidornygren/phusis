@@ -1,9 +1,8 @@
 use crate::{
-    body::Body,
-    checks::check_collision,
-    collision::Collision,
+    collision::{Collision, Contact},
     shape::AABB,
     world::BodyHandle,
+    Vec2,
 };
 
 const MAX_DEPTH: u8 = 8;
@@ -11,7 +10,7 @@ const MAX_CHILDREN: usize = 16;
 
 #[derive(Debug, Clone)]
 pub struct QuadElement {
-    pub aabb:   AABB,
+    pub aabb:   AABB<i32>,
     pub handle: BodyHandle,
 }
 
@@ -22,19 +21,16 @@ enum QuadCorner {
     BottomRight,
 }
 
-/**
- * TODO: AABB should be integer based here
- */
 #[derive(Debug)]
 pub struct QuadTree {
-    bounds:   AABB,
+    bounds:   AABB<i32>,
     level:    u8,
     children: Vec<QuadElement>,
     nodes:    Option<[Box<QuadTree>; 4]>,
 }
 
 impl QuadTree {
-    pub fn new(level: u8, bounds: AABB) -> Self {
+    pub fn new(level: u8, bounds: AABB<i32>) -> Self {
         QuadTree {
             bounds,
             level,
@@ -47,7 +43,7 @@ impl QuadTree {
      * Inserts an items into the quad tree
      */
     pub fn insert(&mut self, element: QuadElement) {
-        let index = self.get_index(&element.aabb);
+        let index = self.get_index(&element);
         if let (Some(nodes), Some(i)) = (&mut self.nodes, index) {
             nodes[i].insert(element);
             return;
@@ -60,7 +56,7 @@ impl QuadTree {
             let mut i = 0;
             while i < self.children.len() {
                 let element = &self.children[i];
-                match self.get_index(&element.aabb) {
+                match self.get_index(element) {
                     Some(quadrant_index) => {
                         self.nodes.as_mut().unwrap()[quadrant_index]
                             .insert(self.children.remove(i));
@@ -86,7 +82,7 @@ impl QuadTree {
             self.children.remove(index);
         } else {
             // Traverse to a child quad tree
-            if let Some(quadrant_index) = self.get_index(&element.aabb) {
+            if let Some(quadrant_index) = self.get_index(&element) {
                 if let Some(node) = self.nodes.as_mut() {
                     node[quadrant_index].remove(element);
                 } else {
@@ -114,11 +110,11 @@ impl QuadTree {
         if self.nodes.is_some() {
             unreachable!();
         }
-        let half_width = self.bounds.get_width() / 2f32;
-        let half_height = self.bounds.get_height() / 2f32;
+        let half_width = self.bounds.width() / 2;
+        let half_height = self.bounds.height() / 2;
 
-        let x = self.bounds.get_x();
-        let y = self.bounds.get_y();
+        let x = self.bounds.min.x;
+        let y = self.bounds.min.y;
 
         self.nodes = Some([
             Box::new(QuadTree::new(
@@ -143,21 +139,22 @@ impl QuadTree {
     /**
      * Determine which node the object belongs to
      */
-    fn get_index(&self, bounds: &AABB) -> Option<usize> {
-        let vertical_midpoint = self.bounds.get_vertical_mid();
-        let horizontal_midpoint = self.bounds.get_horizontal_mid();
+    fn get_index(&self, element: &QuadElement) -> Option<usize> {
+        let vertical_midpoint = self.bounds.min.y + (self.bounds.height() / 2);
+        let horizontal_midpoint = self.bounds.min.x + (self.bounds.width() / 2);
 
         // if object can completely fit within the top quadrants
-        let top_quad = bounds.get_y() < vertical_midpoint && bounds.max.y < vertical_midpoint;
-        let bottom_quad = bounds.get_y() > vertical_midpoint;
+        let top_quad =
+            element.aabb.min.y < vertical_midpoint && element.aabb.max.y < vertical_midpoint;
+        let bottom_quad = element.aabb.min.y > vertical_midpoint;
 
-        if bounds.get_x() < horizontal_midpoint && bounds.max.x < horizontal_midpoint {
+        if element.aabb.min.x < horizontal_midpoint && element.aabb.max.x < horizontal_midpoint {
             if top_quad {
                 return Some(QuadCorner::TopLeft as usize);
             } else if bottom_quad {
                 return Some(QuadCorner::BottomLeft as usize);
             }
-        } else if bounds.get_x() > horizontal_midpoint {
+        } else if element.aabb.min.x > horizontal_midpoint {
             if top_quad {
                 return Some(QuadCorner::TopRight as usize);
             } else if bottom_quad {
@@ -171,14 +168,14 @@ impl QuadTree {
      * Retrieves all items in the same node as the specified item, if the specified item
      * overlaps the bounds of a node, then all nodes from the parent node will be retrieved
      */
-    pub fn retrieve(&self, item: AABB) -> Vec<QuadElement> {
-        let _index = self.get_index(&item);
-        if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
-            nodes[i].retrieve(item)
-        } else {
-            self.get_children()
-        }
-    }
+    // pub fn retrieve(&self, item: AABB) -> Vec<QuadElement> {
+    //     let _index = self.get_index(&item);
+    //     if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
+    //         nodes[i].retrieve(item)
+    //     } else {
+    //         self.get_children()
+    //     }
+    // }
 
     pub fn get_children(&self) -> Vec<QuadElement> {
         let mut nodes_children = self.get_node_children();
@@ -196,8 +193,40 @@ impl QuadTree {
         nodes_children
     }
 
-    pub fn check_collisions(&self, bodies: &Vec<Body>) -> Vec<Collision> {
-        let mut collisions: Vec<Collision> = vec![];
+    fn check_collision(a: &QuadElement, b: &QuadElement) -> Option<Contact<i32>> {
+        let pos_diff = (b.aabb.min - a.aabb.min).abs();
+
+        let b_center = (b.aabb.max - b.aabb.min) / 2;
+        let a_center = (a.aabb.max - a.aabb.min) / 2;
+
+        println!(
+            "B center: {:?}, A center: {:?}, Pos diff: {:?}",
+            b_center, a_center, pos_diff
+        );
+
+        let penetration = b_center + a_center - pos_diff;
+        if penetration.x <= 0 || penetration.y <= 0 {
+            return None;
+        }
+        if penetration.x < penetration.y {
+            let sign_x = pos_diff.x.signum();
+            return Some(Contact {
+                penetration_depth: penetration.x * sign_x,
+                normal:            Vec2::new(sign_x, 0),
+            });
+        }
+        let sign_y = pos_diff.y.signum();
+        Some(Contact {
+            penetration_depth: penetration.y * sign_y,
+            normal:            Vec2::new(0, sign_y),
+        })
+    }
+
+    /**
+     * Broad collision checking
+     */
+    pub fn check_collisions(&self) -> Vec<Collision<i32>> {
+        let mut collisions: Vec<Collision<i32>> = vec![];
         // first check for collision if there is a node child
         // with ALL the children
         let sub_children = self.get_node_children();
@@ -205,34 +234,36 @@ impl QuadTree {
         // sub children
         for (i, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
-            let a_body = bodies.get(a.handle.index).unwrap();
             for b in &self.children[(i + 1)..] {
-                let b_body = bodies.get(b.handle.index).unwrap();
-                if let Some(collision) = check_collision(a_body, b_body, &a.handle, &b.handle) {
-                    collisions.push(collision);
+                if let Some(contact) = Self::check_collision(a, b) {
+                    collisions.push(Collision {
+                        contact,
+                        a: a.handle.clone(),
+                        b: b.handle.clone(),
+                    })
                 }
             }
             // check for collisions with sub children
             for sub_child in &sub_children {
-                let sub_child_body = bodies.get(sub_child.handle.index).unwrap();
-
-                if let Some(collision) =
-                    check_collision(a_body, sub_child_body, &a.handle, &sub_child.handle)
-                {
-                    collisions.push(collision);
+                if let Some(contact) = Self::check_collision(a, sub_child) {
+                    collisions.push(Collision {
+                        contact,
+                        a: a.handle.clone(),
+                        b: sub_child.handle.clone(),
+                    })
                 }
             }
         }
         // Go deeper!
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
-                collisions.extend(node.check_collisions(bodies));
+                collisions.extend(node.check_collisions());
             }
         }
         collisions
     }
 
-    pub fn get_node_aabb(&self) -> Vec<AABB> {
+    pub fn get_node_aabb(&self) -> Vec<AABB<i32>> {
         let mut aabb_vec = vec![self.bounds.clone()];
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
@@ -247,13 +278,13 @@ impl QuadTree {
 mod tests {
     use super::*;
     use crate::{
+        body::Body,
         shape::{Circle, Shape},
-        Vec2,
     };
 
     #[test]
     fn it_inserts_maximum_children() {
-        let mut quad_tree = QuadTree::new(0, AABB::new(-1f32, -1f32, 1f32, 1f32));
+        let mut quad_tree = QuadTree::new(0, AABB::new(-1, -1, 1, 1));
         let mut bodies = vec![];
 
         for _ in 0..MAX_CHILDREN {
@@ -273,7 +304,7 @@ mod tests {
 
     #[test]
     fn is_splits_into_quadrants() {
-        let mut quad_tree = QuadTree::new(0, AABB::new(-10f32, -10f32, 10f32, 10f32));
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 10, 10));
         let mut bodies = vec![];
 
         let length = MAX_CHILDREN * 4;
@@ -322,7 +353,7 @@ mod tests {
 
     #[test]
     fn it_removes_body() {
-        let mut quad_tree = QuadTree::new(0, AABB::new(-10f32, -10f32, 10f32, 10f32));
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 10, 10));
         let mut bodies = vec![];
         let mut bodies_to_remove = vec![];
 

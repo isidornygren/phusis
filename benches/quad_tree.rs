@@ -68,11 +68,7 @@ fn quad_tree_bench(c: &mut Criterion) {
                 Entity::from_raw(0),
             ));
         }
-        b.iter(|| {
-            physics_world
-                .quad_tree
-                .check_collisions(&physics_world.bodies)
-        })
+        b.iter(|| physics_world.quad_tree.check_collisions())
     });
 
     c.bench_function("update 200", |b| {

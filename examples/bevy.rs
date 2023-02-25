@@ -15,10 +15,10 @@ fn setup(mut commands: Commands) {
 fn add_bodies(mut commands: Commands) {
     let mut rng = rand::thread_rng();
 
-    for _ in 0..10000 {
+    for _ in 0..100 {
         let x = rng.gen_range(-100..100) as f32;
         let y = rng.gen_range(-100..100) as f32;
-        let radius = 3.0;
+        let radius = 30.0;
 
         commands
             .spawn(Transform::from_xyz(x, y, 1.0))

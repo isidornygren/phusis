@@ -4,7 +4,6 @@ use crate::{
     bevy::components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor},
     body::Body,
     quad_tree::QuadElement,
-    Vec2,
 };
 
 pub fn on_body_change(
@@ -15,7 +14,7 @@ pub fn on_body_change(
     for (collider, transform, sensor, entity) in query.iter() {
         let handle = physics_world.physics_world.add_body(Body {
             shape: collider.shape.clone(),
-            position: Vec2::new(transform.translation.x, transform.translation.y),
+            position: crate::Vec2::new(transform.translation.x, transform.translation.y),
             fixed: collider.fixed,
             sensor: sensor.is_some(),
             entity,
@@ -32,7 +31,6 @@ pub fn on_body_transform_change(
     query: Query<(&ComponentBodyHandle, &Transform), Changed<Transform>>,
 ) {
     for (body_handle, transform) in query.iter() {
-        // let bodies = &physics_world.physics_world.bodies;
         physics_world
             .physics_world
             .remove_from_quad_tree(&body_handle.handle);
@@ -40,7 +38,7 @@ pub fn on_body_transform_change(
             .physics_world
             .get_body_mut(&body_handle.handle)
         {
-            body.position = Vec2::new(transform.translation.x, transform.translation.y);
+            body.position = crate::Vec2::new(transform.translation.x, transform.translation.y);
         }
         if let Some(aabb) = physics_world
             .physics_world

@@ -8,9 +8,9 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Body {
-    pub position:    Vec2,
-    pub velocity:    Vec2,
-    pub force:       Vec2, // TODO: is this needed
+    pub position:    Vec2<f32>,
+    pub velocity:    Vec2<f32>,
+    pub force:       Vec2<f32>, // TODO: is this needed
     pub mass:        f32,
     pub inv_mass:    f32,
     pub restitution: f32,
@@ -47,7 +47,7 @@ impl Body {
         mass: f32,
         restitution: f32,
         shape: Shape,
-        position: Vec2,
+        position: Vec2<f32>,
         fixed: bool,
         sensor: bool,
         #[cfg(feature = "bevy")] entity: Entity,
@@ -69,7 +69,7 @@ impl Body {
     }
 
     #[must_use]
-    pub fn get_aabb(&self) -> AABB {
-        self.shape.get_aabb() + &self.position
+    pub fn get_aabb(&self) -> AABB<i32> {
+        self.shape.get_aabb(self.position)
     }
 }
