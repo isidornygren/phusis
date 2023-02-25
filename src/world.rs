@@ -54,7 +54,6 @@ fn resolve_collision(bodies: &mut [Body], collision: &Collision<f32>) {
 }
 
 fn correct_position(bodies: &mut [Body], collision: &Collision<f32>) {
-    // println!("Correcting position: {:?}", collision);
     let (a_fixed, b_fixed, a_inv_mass, b_inv_mass, correction) = {
         let a = bodies.get(collision.a.index).unwrap();
         let b = bodies.get(collision.b.index).unwrap();
@@ -187,7 +186,6 @@ impl PhysicsWorld {
         // Broad phase
         let broad_collisions = self.quad_tree.check_collisions();
 
-        println!("Broad collisions: {:?}", broad_collisions.len());
         // Narrow phase
         let collisions =
             broad_collisions

@@ -199,11 +199,6 @@ impl QuadTree {
         let b_center = (b.aabb.max - b.aabb.min) / 2;
         let a_center = (a.aabb.max - a.aabb.min) / 2;
 
-        println!(
-            "B center: {:?}, A center: {:?}, Pos diff: {:?}",
-            b_center, a_center, pos_diff
-        );
-
         let penetration = b_center + a_center - pos_diff;
         if penetration.x <= 0 || penetration.y <= 0 {
             return None;
