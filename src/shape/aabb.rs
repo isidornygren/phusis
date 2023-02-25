@@ -20,11 +20,6 @@ where
         }
     }
 
-    // #[must_use]
-    // pub fn get_rect(&self) -> (T, T, T, T) {
-    //     (self.min.x, self.min.y, self.width(), self.height())
-    // }
-
     #[must_use]
     pub fn width(&self) -> T {
         self.max.x - self.min.x

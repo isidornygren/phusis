@@ -1,12 +1,7 @@
-use crate::{shape::AABB, world::BodyHandle};
+use crate::{collision::BroadCollision, shape::AABB, world::BodyHandle};
 
 const MAX_DEPTH: u8 = 8;
 const MAX_CHILDREN: usize = 16;
-
-pub struct QuadCollision {
-    pub a: BodyHandle,
-    pub b: BodyHandle,
-}
 
 #[derive(Debug, Clone)]
 pub struct QuadElement {
@@ -214,8 +209,8 @@ impl QuadTree {
         penetration.x > 0 && penetration.y > 0
     }
 
-    pub fn check_collisions(&self) -> Vec<QuadCollision> {
-        let mut collisions: Vec<QuadCollision> = vec![];
+    pub fn check_collisions(&self) -> Vec<BroadCollision> {
+        let mut collisions: Vec<BroadCollision> = vec![];
         // first check for collision if there is a node child
         // with ALL the children
         let sub_children = self.get_node_children();
@@ -225,7 +220,7 @@ impl QuadTree {
             // check for collisions with children within the same area
             for b in &self.children[(i + 1)..] {
                 if Self::is_colliding(a, b) {
-                    collisions.push(QuadCollision {
+                    collisions.push(BroadCollision {
                         a: a.handle.clone(),
                         b: b.handle.clone(),
                     });
@@ -234,7 +229,7 @@ impl QuadTree {
             // check for collisions with sub children
             for sub_child in &sub_children {
                 if Self::is_colliding(a, sub_child) {
-                    collisions.push(QuadCollision {
+                    collisions.push(BroadCollision {
                         a: a.handle.clone(),
                         b: sub_child.handle.clone(),
                     });

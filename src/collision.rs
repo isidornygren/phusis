@@ -12,3 +12,9 @@ pub struct Collision<T> {
     pub a:       BodyHandle,
     pub b:       BodyHandle,
 }
+
+#[derive(Debug)]
+pub struct BroadCollision {
+    pub a: BodyHandle,
+    pub b: BodyHandle,
+}
