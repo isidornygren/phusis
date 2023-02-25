@@ -1,12 +1,12 @@
-use crate::{
-    collision::{Collision, Contact},
-    shape::AABB,
-    world::BodyHandle,
-    Vec2,
-};
+use crate::{shape::AABB, world::BodyHandle};
 
 const MAX_DEPTH: u8 = 8;
 const MAX_CHILDREN: usize = 16;
+
+pub struct QuadCollision {
+    pub a: BodyHandle,
+    pub b: BodyHandle,
+}
 
 #[derive(Debug, Clone)]
 pub struct QuadElement {
@@ -96,6 +96,29 @@ impl QuadTree {
     }
 
     /**
+     * Removes any dangling nodes,
+     * returns true if the node was empty
+     */
+    pub fn clean_up(&mut self) -> bool {
+        let children_is_empty = self.children.is_empty();
+
+        let mut all_are_empty = true;
+        if let Some(nodes) = self.nodes.as_mut() {
+            for node in nodes.iter_mut() {
+                if !node.clean_up() {
+                    all_are_empty = false;
+                }
+            }
+        }
+
+        if all_are_empty && self.nodes.is_some() {
+            self.nodes = None;
+        }
+
+        children_is_empty && all_are_empty
+    }
+
+    /**
      * Clears all items from a quad tree
      */
     pub fn clear(&mut self) {
@@ -164,19 +187,6 @@ impl QuadTree {
         None
     }
 
-    /**
-     * Retrieves all items in the same node as the specified item, if the specified item
-     * overlaps the bounds of a node, then all nodes from the parent node will be retrieved
-     */
-    // pub fn retrieve(&self, item: AABB) -> Vec<QuadElement> {
-    //     let _index = self.get_index(&item);
-    //     if let (Some(i), Some(nodes)) = (self.get_index(&item), &self.nodes) {
-    //         nodes[i].retrieve(item)
-    //     } else {
-    //         self.get_children()
-    //     }
-    // }
-
     pub fn get_children(&self) -> Vec<QuadElement> {
         let mut nodes_children = self.get_node_children();
         nodes_children.extend(self.children.clone());
@@ -193,35 +203,19 @@ impl QuadTree {
         nodes_children
     }
 
-    fn check_collision(a: &QuadElement, b: &QuadElement) -> Option<Contact<i32>> {
+    fn is_colliding(a: &QuadElement, b: &QuadElement) -> bool {
         let pos_diff = (b.aabb.min - a.aabb.min).abs();
 
         let b_center = (b.aabb.max - b.aabb.min) / 2;
         let a_center = (a.aabb.max - a.aabb.min) / 2;
 
         let penetration = b_center + a_center - pos_diff;
-        if penetration.x <= 0 || penetration.y <= 0 {
-            return None;
-        }
-        if penetration.x < penetration.y {
-            let sign_x = pos_diff.x.signum();
-            return Some(Contact {
-                penetration_depth: penetration.x * sign_x,
-                normal:            Vec2::new(sign_x, 0),
-            });
-        }
-        let sign_y = pos_diff.y.signum();
-        Some(Contact {
-            penetration_depth: penetration.y * sign_y,
-            normal:            Vec2::new(0, sign_y),
-        })
+
+        penetration.x > 0 && penetration.y > 0
     }
 
-    /**
-     * Broad collision checking
-     */
-    pub fn check_collisions(&self) -> Vec<Collision<i32>> {
-        let mut collisions: Vec<Collision<i32>> = vec![];
+    pub fn check_collisions(&self) -> Vec<QuadCollision> {
+        let mut collisions: Vec<QuadCollision> = vec![];
         // first check for collision if there is a node child
         // with ALL the children
         let sub_children = self.get_node_children();
@@ -230,22 +224,20 @@ impl QuadTree {
         for (i, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
             for b in &self.children[(i + 1)..] {
-                if let Some(contact) = Self::check_collision(a, b) {
-                    collisions.push(Collision {
-                        contact,
+                if Self::is_colliding(a, b) {
+                    collisions.push(QuadCollision {
                         a: a.handle.clone(),
                         b: b.handle.clone(),
-                    })
+                    });
                 }
             }
             // check for collisions with sub children
             for sub_child in &sub_children {
-                if let Some(contact) = Self::check_collision(a, sub_child) {
-                    collisions.push(Collision {
-                        contact,
+                if Self::is_colliding(a, sub_child) {
+                    collisions.push(QuadCollision {
                         a: a.handle.clone(),
                         b: sub_child.handle.clone(),
-                    })
+                    });
                 }
             }
         }
@@ -275,6 +267,7 @@ mod tests {
     use crate::{
         body::Body,
         shape::{Circle, Shape},
+        Vec2,
     };
 
     #[test]

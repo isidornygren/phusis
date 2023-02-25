@@ -254,6 +254,7 @@ impl PhysicsWorld {
                 });
             }
         }
+        self.quad_tree.clean_up();
 
         collisions
     }

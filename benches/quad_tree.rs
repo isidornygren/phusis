@@ -50,11 +50,12 @@ fn quad_tree_bench(c: &mut Criterion) {
             criterion::BatchSize::SmallInput,
         )
     });
+
     c.bench_function("collision_update 200", |b| {
         let mut physics_world = PhysicsWorld::default();
         let mut rng = rand::thread_rng();
 
-        for _ in 0..BODIES {
+        for _ in 0..200 {
             let x = rng.gen_range(0..100) as f32;
             let y = rng.gen_range(0..100) as f32;
 
@@ -75,7 +76,49 @@ fn quad_tree_bench(c: &mut Criterion) {
         let mut physics_world = PhysicsWorld::default();
         let mut rng = rand::thread_rng();
 
-        for _ in 0..BODIES {
+        for _ in 0..200 {
+            let x = rng.gen_range(0..100) as f32;
+            let y = rng.gen_range(0..100) as f32;
+
+            let _new_body = physics_world.add_body(Body::new(
+                1f32,
+                1f32,
+                Shape::Circle(Circle::new(10f32)),
+                Vec2::new(x, y),
+                false,
+                false,
+                Entity::from_raw(0),
+            ));
+        }
+        b.iter(|| physics_world.update_with_quad(black_box(1f32 / 60f32)))
+    });
+
+    c.bench_function("collision_update 2000", |b| {
+        let mut physics_world = PhysicsWorld::default();
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..2000 {
+            let x = rng.gen_range(0..100) as f32;
+            let y = rng.gen_range(0..100) as f32;
+
+            let _new_body = physics_world.add_body(Body::new(
+                1f32,
+                1f32,
+                Shape::Circle(Circle::new(10f32)),
+                Vec2::new(x, y),
+                false,
+                false,
+                Entity::from_raw(0),
+            ));
+        }
+        b.iter(|| physics_world.quad_tree.check_collisions())
+    });
+
+    c.bench_function("update 2000", |b| {
+        let mut physics_world = PhysicsWorld::default();
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..2000 {
             let x = rng.gen_range(0..100) as f32;
             let y = rng.gen_range(0..100) as f32;
 
