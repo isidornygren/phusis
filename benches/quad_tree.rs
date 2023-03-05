@@ -2,17 +2,17 @@ use bevy::prelude::Entity;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use phusis::{
     body::Body,
-    shape::{Circle, Shape},
-    world::PhysicsWorld,
+    shape::{Circle, Shape, AABB},
+    world::{broad::BroadPhase, PhysicsWorld},
+    QuadTree,
     Vec2,
 };
 use rand::prelude::*;
 
-const BODIES: u32 = 200;
-
 fn quad_tree_bench(c: &mut Criterion) {
     c.bench_function("insertion", |b| {
-        let mut physics_world = PhysicsWorld::default();
+        let mut physics_world =
+            PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)));
 
         b.iter(|| {
             physics_world.add_body(Body::new(
@@ -31,7 +31,8 @@ fn quad_tree_bench(c: &mut Criterion) {
 
         b.iter_batched(
             || {
-                let mut physics_world = PhysicsWorld::default();
+                let mut physics_world =
+                    PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)));
                 let handle = physics_world.add_body(Body::new(
                     black_box(1f32),
                     black_box(1f32),
@@ -52,7 +53,8 @@ fn quad_tree_bench(c: &mut Criterion) {
     });
 
     c.bench_function("collision_update 200", |b| {
-        let mut physics_world = PhysicsWorld::default();
+        let mut physics_world =
+            PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)));
         let mut rng = rand::thread_rng();
 
         for _ in 0..200 {
@@ -69,11 +71,12 @@ fn quad_tree_bench(c: &mut Criterion) {
                 Entity::from_raw(0),
             ));
         }
-        b.iter(|| physics_world.quad_tree.check_collisions())
+        b.iter(|| physics_world.broad_phase.check_collisions())
     });
 
     c.bench_function("update 200", |b| {
-        let mut physics_world = PhysicsWorld::default();
+        let mut physics_world =
+            PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)));
         let mut rng = rand::thread_rng();
 
         for _ in 0..200 {
@@ -94,7 +97,8 @@ fn quad_tree_bench(c: &mut Criterion) {
     });
 
     c.bench_function("collision_update 2000", |b| {
-        let mut physics_world = PhysicsWorld::default();
+        let mut physics_world =
+            PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)));
         let mut rng = rand::thread_rng();
 
         for _ in 0..2000 {
@@ -111,11 +115,12 @@ fn quad_tree_bench(c: &mut Criterion) {
                 Entity::from_raw(0),
             ));
         }
-        b.iter(|| physics_world.quad_tree.check_collisions())
+        b.iter(|| physics_world.broad_phase.check_collisions())
     });
 
     c.bench_function("update 2000", |b| {
-        let mut physics_world = PhysicsWorld::default();
+        let mut physics_world =
+            PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)));
         let mut rng = rand::thread_rng();
 
         for _ in 0..2000 {

@@ -9,6 +9,7 @@ pub mod shape;
 mod vec;
 pub mod world;
 
+pub use quad_tree::QuadTree;
 pub use vec::Vec2;
 
 #[cfg(feature = "bevy")]

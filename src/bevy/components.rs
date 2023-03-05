@@ -1,13 +1,14 @@
 use bevy::prelude::*;
 
 use crate::{
+    quad_tree::QuadTree,
     shape::Shape,
     world::{BodyHandle, PhysicsWorld},
 };
 
 #[derive(Resource)]
 pub struct PhysicsWorldResource {
-    pub physics_world: PhysicsWorld,
+    pub physics_world: PhysicsWorld<QuadTree>,
 }
 
 #[derive(Component)]

@@ -1,11 +1,13 @@
+use self::broad::{BroadPhase, BroadPhaseElement};
 use crate::{
     body::Body,
     checks::{circle_vs_circle, rect_vs_circle, rect_vs_rect},
-    collision::{Collision, Contact},
-    quad_tree::{QuadElement, QuadTree},
-    shape::{Shape, AABB},
+    collision::Collision,
+    shape::Shape,
     Vec2,
 };
+
+pub mod broad;
 
 // High percentage = no penetration
 const PENETRATION_PERCENTAGE: f32 = 0.5;
@@ -88,30 +90,46 @@ pub struct BodyHandle {
     pub index: usize,
 }
 
-pub struct PhysicsWorld {
-    pub bodies:      Vec<Body>,
+pub struct PhysicsWorld<Broad>
+where
+    Broad: BroadPhase, {
+    bodies:          Vec<Body>,
+    sensors:         Vec<Body>,
     removed_indices: Vec<usize>,
-    pub quad_tree:   QuadTree,
+    // pub quad_tree:   QuadTree,
+    pub broad_phase: Broad,
 }
 
-impl Default for PhysicsWorld {
-    fn default() -> Self {
+// impl Default for PhysicsWorld {
+//     fn default() -> Self {
+//         Self {
+//             bodies:          vec![],
+//             quad_tree:       QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)),
+//             removed_indices: vec![],
+//         }
+//     }
+// }
+
+impl<Broad> PhysicsWorld<Broad>
+where
+    Broad: BroadPhase,
+{
+    pub fn new(broad_phase: Broad) -> Self {
         Self {
-            bodies:          vec![],
-            quad_tree:       QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000)),
+            bodies: vec![],
+            sensors: vec![],
             removed_indices: vec![],
+            broad_phase,
         }
     }
-}
 
-impl PhysicsWorld {
     pub fn add_body(&mut self, body: Body) -> BodyHandle {
         if let Some(removed_index) = self.removed_indices.pop() {
             let handle = BodyHandle {
                 index: removed_index,
             };
 
-            self.quad_tree.insert(QuadElement {
+            self.broad_phase.insert(BroadPhaseElement {
                 handle: handle.clone(),
                 aabb:   body.get_aabb(),
             });
@@ -123,7 +141,7 @@ impl PhysicsWorld {
         let handle = BodyHandle {
             index: self.bodies.len(),
         };
-        self.quad_tree.insert(QuadElement {
+        self.broad_phase.insert(BroadPhaseElement {
             handle: handle.clone(),
             aabb:   body.get_aabb(),
         });
@@ -133,21 +151,25 @@ impl PhysicsWorld {
 
     pub fn remove_body(&mut self, handle: BodyHandle) {
         self.removed_indices.push(handle.index);
-        self.quad_tree.remove(QuadElement {
+        self.broad_phase.remove(BroadPhaseElement {
             handle: handle.clone(),
             aabb:   self.bodies.get(handle.index).unwrap().get_aabb(),
         });
     }
 
-    pub fn remove_from_quad_tree(&mut self, handle: &BodyHandle) {
-        self.quad_tree.remove(QuadElement {
+    pub fn update<F>(&mut self, handle: &BodyHandle, mut func: F)
+    where
+        F: FnMut(&mut Body), {
+        let body = self.bodies.get_mut(handle.index).unwrap();
+        self.broad_phase.remove(BroadPhaseElement {
+            aabb:   body.get_aabb(),
             handle: handle.clone(),
-            aabb:   self.bodies.get(handle.index).unwrap().get_aabb(),
         });
-    }
-
-    pub fn insert_into_quad_tree(&mut self, element: QuadElement) {
-        self.quad_tree.insert(element);
+        func(body);
+        self.broad_phase.insert(BroadPhaseElement {
+            aabb:   body.get_aabb(),
+            handle: handle.clone(),
+        });
     }
 
     #[must_use]
@@ -184,7 +206,7 @@ impl PhysicsWorld {
     pub fn update_with_quad(&mut self, dt: f32) -> Vec<Collision<f32>> {
         self.calc_velocity(dt);
         // Broad phase
-        let broad_collisions = self.quad_tree.check_collisions();
+        let broad_collisions = self.broad_phase.check_collisions();
 
         // Narrow phase
         let collisions =
@@ -226,13 +248,13 @@ impl PhysicsWorld {
                 .map_or(false, |b_body| b_body.fixed || b_body.sensor);
 
             if !a_sensor_or_fixed {
-                self.quad_tree.remove(QuadElement {
+                self.broad_phase.remove(BroadPhaseElement {
                     handle: collision.a.clone(),
                     aabb:   self.bodies.get(collision.a.index).unwrap().get_aabb(),
                 });
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.remove(QuadElement {
+                self.broad_phase.remove(BroadPhaseElement {
                     handle: collision.b.clone(),
                     aabb:   self.bodies.get(collision.b.index).unwrap().get_aabb(),
                 });
@@ -242,40 +264,20 @@ impl PhysicsWorld {
             correct_position(&mut self.bodies, collision);
 
             if !a_sensor_or_fixed {
-                self.quad_tree.insert(QuadElement {
+                self.broad_phase.insert(BroadPhaseElement {
                     handle: collision.a.clone(),
                     aabb:   self.get_body(&collision.a).unwrap().get_aabb(),
                 });
             }
             if !b_sensor_or_fixed {
-                self.quad_tree.insert(QuadElement {
+                self.broad_phase.insert(BroadPhaseElement {
                     handle: collision.b.clone(),
                     aabb:   self.get_body(&collision.b).unwrap().get_aabb(),
                 });
             }
         }
-        self.quad_tree.clean_up();
+        self.broad_phase.clean_up();
 
         collisions
     }
-
-    #[must_use]
-    pub fn get_quad_tree_aabb(&self) -> Vec<AABB<i32>> {
-        self.quad_tree.get_node_aabb()
-    }
-
-    // pub fn update(&mut self, dt: f32) {
-    //     self.calc_velocity(dt);
-    //     // Resolve collision for body pairs
-    //     for (i, a) in self.bodies.iter().enumerate() {
-    //         for b in &self.bodies[(i + 1)..] {
-    //             // The collision checking stage can definitely be parallelised (probably)
-    //             let resolution = check_collision(a, b);
-    //             if let Some(collision) = resolution {
-    //                 resolve_collision(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
-    //                 correct_position(&mut a.borrow_mut(), &mut b.borrow_mut(), &collision);
-    //             }
-    //         }
-    //     }
-    // }
 }

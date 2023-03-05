@@ -1,8 +1,6 @@
 use crate::{
-    body::Body,
-    collision::{Collision, Contact},
-    shape::{Circle, Shape, AABB},
-    world::BodyHandle,
+    collision::Contact,
+    shape::{Circle, AABB},
     Vec2,
 };
 
@@ -10,36 +8,7 @@ fn distance_squared(vec: &Vec2<f32>) -> f32 {
     (vec.x).powf(2f32) + (vec.y).powf(2f32)
 }
 
-// pub fn check_collision(
-//     a: &Body,
-//     b: &Body,
-//     a_handle: &BodyHandle,
-//     b_handle: &BodyHandle,
-// ) -> Option<Collision> {
-//     let (a_shape, a_position) = { (&a.shape, &a.position) };
-//     let (b_shape, b_position) = { (&b.shape, &b.position) };
-
-//     match (a_shape, b_shape) {
-//         (Shape::Circle(a_circle), Shape::Circle(b_circle)) => circle_vs_circle(
-//             a_circle, b_circle, a_position, b_position, a_handle, b_handle,
-//         ),
-//         (Shape::AABB(a_aabb), Shape::AABB(b_aabb)) => {
-//             aabb_vs_aabb(a_aabb, b_aabb, a_position, b_position, a_handle, b_handle)
-//         },
-//         (Shape::Circle(circle), Shape::AABB(aabb)) | (Shape::AABB(aabb), Shape::Circle(circle)) => {
-//             aabb_vs_circle(aabb, circle, a_position, b_position, a_handle, b_handle)
-//         },
-//     }
-// }
-
-pub fn aabb_vs_aabb(
-    a: &AABB<f32>,
-    b: &AABB<f32>,
-    // a_position: &Vec2,
-    // b_position: &Vec2,
-    // a_handle: &BodyHandle,
-    // b_handle: &BodyHandle,
-) -> Option<Contact<f32>> {
+pub fn aabb_vs_aabb(a: &AABB<f32>, b: &AABB<f32>) -> Option<Contact<f32>> {
     let pos_diff = b.min - a.min;
 
     let penetration =
