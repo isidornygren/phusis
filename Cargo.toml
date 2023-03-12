@@ -17,6 +17,7 @@ path = "src/lib.rs"
 [dependencies]
 bevy = { version = "0.9", optional = true }
 bevy_prototype_lyon = { version = "0.7", optional = true }
+generational-arena = "0.2.8"
 
 [dev-dependencies]
 stopwatch = "0.0.7"

@@ -15,14 +15,19 @@ enum QuadCorner {
 }
 
 #[derive(Debug)]
-pub struct QuadTree {
+pub struct QuadTree<Handle>
+where
+    Handle: Clone, {
     bounds:   AABB<i32>,
     level:    u8,
-    children: Vec<BroadPhaseElement>,
-    nodes:    Option<[Box<QuadTree>; 4]>,
+    children: Vec<BroadPhaseElement<Handle>>,
+    nodes:    Option<[Box<QuadTree<Handle>>; 4]>,
 }
 
-impl QuadTree {
+impl<Handle> QuadTree<Handle>
+where
+    Handle: Clone,
+{
     pub fn new(level: u8, bounds: AABB<i32>) -> Self {
         QuadTree {
             bounds,
@@ -68,22 +73,21 @@ impl QuadTree {
     /**
      * Determine which node the object belongs to
      */
-    fn get_index(&self, element: &BroadPhaseElement) -> Option<usize> {
+    fn get_index(&self, aabb: &AABB<i32>) -> Option<usize> {
         let vertical_midpoint = self.bounds.min.y + (self.bounds.height() / 2);
         let horizontal_midpoint = self.bounds.min.x + (self.bounds.width() / 2);
 
         // if object can completely fit within the top quadrants
-        let top_quad =
-            element.aabb.min.y < vertical_midpoint && element.aabb.max.y < vertical_midpoint;
-        let bottom_quad = element.aabb.min.y > vertical_midpoint;
+        let top_quad = aabb.min.y < vertical_midpoint && aabb.max.y < vertical_midpoint;
+        let bottom_quad = aabb.min.y > vertical_midpoint;
 
-        if element.aabb.min.x < horizontal_midpoint && element.aabb.max.x < horizontal_midpoint {
+        if aabb.min.x < horizontal_midpoint && aabb.max.x < horizontal_midpoint {
             if top_quad {
                 return Some(QuadCorner::TopLeft as usize);
             } else if bottom_quad {
                 return Some(QuadCorner::BottomLeft as usize);
             }
-        } else if element.aabb.min.x > horizontal_midpoint {
+        } else if aabb.min.x > horizontal_midpoint {
             if top_quad {
                 return Some(QuadCorner::TopRight as usize);
             } else if bottom_quad {
@@ -93,13 +97,13 @@ impl QuadTree {
         None
     }
 
-    fn get_children(&self) -> Vec<BroadPhaseElement> {
+    fn get_children(&self) -> Vec<BroadPhaseElement<Handle>> {
         let mut nodes_children = self.get_node_children();
         nodes_children.extend(self.children.clone());
         nodes_children
     }
 
-    fn get_node_children(&self) -> Vec<BroadPhaseElement> {
+    fn get_node_children(&self) -> Vec<BroadPhaseElement<Handle>> {
         let mut nodes_children = vec![];
         if let Some(nodes) = &self.nodes {
             for node in nodes.iter() {
@@ -110,9 +114,9 @@ impl QuadTree {
     }
 }
 
-impl BroadPhase for QuadTree {
-    fn insert(&mut self, element: BroadPhaseElement) {
-        let index = self.get_index(&element);
+impl<Handle: Clone + PartialEq + std::fmt::Debug> BroadPhase<Handle> for QuadTree<Handle> {
+    fn insert(&mut self, element: BroadPhaseElement<Handle>) {
+        let index = self.get_index(&element.aabb);
         if let (Some(nodes), Some(i)) = (&mut self.nodes, index) {
             nodes[i].insert(element);
             return;
@@ -125,7 +129,7 @@ impl BroadPhase for QuadTree {
             let mut i = 0;
             while i < self.children.len() {
                 let element = &self.children[i];
-                match self.get_index(element) {
+                match self.get_index(&element.aabb) {
                     Some(quadrant_index) => {
                         self.nodes.as_mut().unwrap()[quadrant_index]
                             .insert(self.children.remove(i));
@@ -138,17 +142,17 @@ impl BroadPhase for QuadTree {
         }
     }
 
-    fn remove(&mut self, element: BroadPhaseElement) {
+    fn remove(&mut self, element: BroadPhaseElement<Handle>) {
         if let Some(index) = self
             .children
             .iter()
-            .position(|child| element.handle.index == child.handle.index)
+            .position(|child| element.handle == child.handle)
         {
             // Remove that index
             self.children.remove(index);
         } else {
             // Traverse to a child quad tree
-            if let Some(quadrant_index) = self.get_index(&element) {
+            if let Some(quadrant_index) = self.get_index(&element.aabb) {
                 if let Some(node) = self.nodes.as_mut() {
                     node[quadrant_index].remove(element);
                 } else {
@@ -161,28 +165,25 @@ impl BroadPhase for QuadTree {
         }
     }
 
-    fn check(&self, element: BroadPhaseElement) -> Vec<BroadCollision> {
-        let index = self.get_index(&element);
+    fn check(&self, aabb: AABB<i32>) -> Vec<Handle> {
+        let index = self.get_index(&aabb);
         if let (Some(nodes), Some(i)) = (&self.nodes, index) {
-            return nodes[i].check(element);
+            return nodes[i].check(aabb);
         }
 
         let mut collisions = vec![];
 
         // Either the element should only check in this node, or the node has no children
         for child in self.get_children() {
-            if element.collides_with(&child) {
-                collisions.push(BroadCollision {
-                    a: element.handle.clone(),
-                    b: child.handle.clone(),
-                });
+            if aabb.intersects(&child.aabb) {
+                collisions.push(child.handle.clone());
             }
         }
         collisions
     }
 
-    fn check_collisions(&self) -> Vec<BroadCollision> {
-        let mut collisions: Vec<BroadCollision> = vec![];
+    fn check_collisions(&self) -> Vec<BroadCollision<Handle>> {
+        let mut collisions = vec![];
         // first check for collision if there is a node child
         // with ALL the children
         let sub_children = self.get_node_children();
@@ -191,7 +192,7 @@ impl BroadPhase for QuadTree {
         for (i, a) in self.children.iter().enumerate() {
             // check for collisions with children within the same area
             for b in &self.children[(i + 1)..] {
-                if a.collides_with(b) {
+                if a.aabb.intersects(&b.aabb) {
                     collisions.push(BroadCollision {
                         a: a.handle.clone(),
                         b: b.handle.clone(),
@@ -200,7 +201,7 @@ impl BroadPhase for QuadTree {
             }
             // check for collisions with sub children
             for sub_child in &sub_children {
-                if a.collides_with(sub_child) {
+                if a.aabb.intersects(&sub_child.aabb) {
                     collisions.push(BroadCollision {
                         a: a.handle.clone(),
                         b: sub_child.handle.clone(),
@@ -244,29 +245,27 @@ impl BroadPhase for QuadTree {
 
 #[cfg(test)]
 mod tests {
+    use generational_arena::Arena;
+
     use super::*;
     use crate::{
         body::Body,
         shape::{Circle, Shape},
-        world::BodyHandle,
         Vec2,
     };
 
     #[test]
     fn it_inserts_maximum_children() {
         let mut quad_tree = QuadTree::new(0, AABB::new(-1, -1, 1, 1));
-        let mut bodies = vec![];
+        let mut bodies = Arena::new();
 
         for _ in 0..MAX_CHILDREN {
             let body = Body::default();
-            let handle = BodyHandle {
-                index: bodies.len(),
-            };
+
             quad_tree.insert(BroadPhaseElement {
-                handle,
-                aabb: body.get_aabb(),
+                aabb:   body.get_aabb(),
+                handle: bodies.insert(body),
             });
-            bodies.push(body);
         }
 
         assert_eq!(quad_tree.children.len(), MAX_CHILDREN);
@@ -275,7 +274,7 @@ mod tests {
     #[test]
     fn is_splits_into_quadrants() {
         let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 10, 10));
-        let mut bodies = vec![];
+        let mut bodies = Arena::new();
 
         let length = MAX_CHILDREN * 4;
         for i in 0..length {
@@ -291,14 +290,11 @@ mod tests {
                 false,
                 Body::default().entity,
             );
-            let handle = BodyHandle {
-                index: bodies.len(),
-            };
+
             quad_tree.insert(BroadPhaseElement {
-                handle,
-                aabb: body.get_aabb(),
+                aabb:   body.get_aabb(),
+                handle: bodies.insert(body),
             });
-            bodies.push(body);
         }
 
         assert_eq!(quad_tree.children.len(), 0);
@@ -324,7 +320,7 @@ mod tests {
     #[test]
     fn it_removes_body() {
         let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 10, 10));
-        let mut bodies = vec![];
+        let mut bodies = Arena::new();
         let mut bodies_to_remove = vec![];
 
         let length = MAX_CHILDREN * 4;
@@ -341,22 +337,17 @@ mod tests {
                 false,
                 Body::default().entity,
             );
-            let handle = BodyHandle {
-                index: bodies.len(),
-            };
+            let aabb = body.get_aabb();
+            let handle = bodies.insert(body);
             if x == -10.0 && y == -10.0 {
-                bodies_to_remove.push(handle.clone());
+                bodies_to_remove.push(handle);
             }
-            quad_tree.insert(BroadPhaseElement {
-                handle,
-                aabb: body.get_aabb(),
-            });
-            bodies.push(body);
+            quad_tree.insert(BroadPhaseElement { handle, aabb });
         }
         bodies_to_remove.iter().for_each(|handle| {
             quad_tree.remove(BroadPhaseElement {
-                handle: handle.clone(),
-                aabb:   bodies.get(handle.index).unwrap().get_aabb(),
+                handle: *handle,
+                aabb:   bodies.get(*handle).unwrap().get_aabb(),
             });
         });
         assert_eq!(quad_tree.children.len(), 0);

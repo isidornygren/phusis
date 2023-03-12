@@ -1,8 +1,13 @@
 use bevy::prelude::*;
 
+use super::components::{Fixed, PhysicsWorldResource};
 use crate::{
-    bevy::components::{Collider, Collisions, ComponentBodyHandle, PhysicsWorldResource, Sensor},
-    body::Body,
+    bevy::components::{Collider, Collisions, ComponentBodyHandle, Sensor},
+    body::{Body, BodySensor},
+    checks::{circle_vs_circle, rect_vs_circle, rect_vs_rect},
+    collision::{BroadCollision, Collision},
+    shape::Shape,
+    world::broad::{BroadPhase, BroadPhaseElement},
 };
 
 pub fn on_body_change(
@@ -15,7 +20,7 @@ pub fn on_body_change(
             shape: collider.shape.clone(),
             position: crate::Vec2::new(transform.translation.x, transform.translation.y),
             fixed: collider.fixed,
-            sensor: sensor.is_some(),
+            // sensor: sensor.is_some(),
             entity,
             ..default()
         });

@@ -46,7 +46,7 @@ fn quad_tree_bench(c: &mut Criterion) {
                 (physics_world, handle)
             },
             |(mut physics_world, handle)| {
-                physics_world.remove_body(handle);
+                physics_world.remove_body(&handle);
             },
             criterion::BatchSize::SmallInput,
         )

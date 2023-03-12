@@ -17,9 +17,16 @@ pub struct Body {
     pub shape:       Shape,
     pub friction:    f32,
     pub fixed:       bool,
-    pub sensor:      bool,
     #[cfg(feature = "bevy")]
     pub entity:      Entity,
+}
+
+#[derive(Debug)]
+pub struct BodySensor {
+    pub position: Vec2<f32>,
+    pub shape:    Shape,
+    #[cfg(feature = "bevy")]
+    pub entity:   Entity,
 }
 
 impl Default for Body {
@@ -34,7 +41,6 @@ impl Default for Body {
             shape: Shape::Circle(Circle::new(1.0)),
             friction: 0.0,
             fixed: false,
-            sensor: false,
             #[cfg(feature = "bevy")]
             entity: Entity::from_bits(0),
         }
@@ -62,7 +68,6 @@ impl Body {
             shape,
             friction: 5f32,
             fixed,
-            sensor,
             #[cfg(feature = "bevy")]
             entity,
         }

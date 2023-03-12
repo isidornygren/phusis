@@ -12,6 +12,7 @@ impl<T> AABB<T>
 where
     T: Add<Output = T> + Sub<Output = T> + Div<Output = T> + PartialOrd + Copy,
 {
+    #[inline]
     #[must_use]
     pub fn new(x: T, y: T, width: T, height: T) -> Self {
         Self {
@@ -20,24 +21,24 @@ where
         }
     }
 
+    #[inline]
     #[must_use]
     pub fn width(&self) -> T {
         self.max.x - self.min.x
     }
 
+    #[inline]
     #[must_use]
     pub fn height(&self) -> T {
         self.max.y - self.min.y
     }
 
-    /**
-     * is strictly within another AABB
-     */
+    #[inline]
     #[must_use]
-    pub fn is_within(&self, other: &AABB<T>) -> bool {
-        self.min.x > other.min.x
-            && self.min.y > other.min.y
-            && self.max.x < other.max.x
-            && self.max.y < other.max.y
+    pub fn intersects(&self, other: &AABB<T>) -> bool {
+        !(other.min.x > self.max.x
+            || other.max.x < self.min.x
+            || other.min.y < self.max.y
+            || other.min.y > self.max.y)
     }
 }
