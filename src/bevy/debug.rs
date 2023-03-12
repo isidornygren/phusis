@@ -1,16 +1,16 @@
 use bevy::prelude::*;
 
 use super::components::Collider;
-use crate::{bevy::components::Sensor, shape::Shape};
+use crate::shape::Shape;
 
 fn debug_physics(
     mut commands: Commands,
-    query: Query<(&Collider, &Transform, Option<&Sensor>, Entity), Changed<Collider>>,
+    query: Query<(&Collider, &Transform, Entity), Changed<Collider>>,
 ) {
     use bevy_prototype_lyon::prelude::*;
 
-    for (body, transform, sensor, entity) in query.iter() {
-        let color = match (body.fixed, sensor.is_some()) {
+    for (body, transform, entity) in query.iter() {
+        let color = match (body.fixed, body.sensor) {
             (true, true) => Color::GREEN,
             (true, false) => Color::BLUE,
             (false, true) => Color::YELLOW,

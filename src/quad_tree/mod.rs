@@ -1,5 +1,5 @@
 use crate::{
-    collision::BroadCollision,
+    collision::CollisionPair,
     shape::AABB,
     world::broad::{BroadPhase, BroadPhaseElement},
 };
@@ -121,6 +121,7 @@ impl<Handle: Clone + PartialEq + std::fmt::Debug> BroadPhase<Handle> for QuadTre
             nodes[i].insert(element);
             return;
         }
+        // The child will exist in two places with this code.
         self.children.push(element);
         if self.children.len() > MAX_CHILDREN && self.level < MAX_DEPTH {
             if self.nodes.is_none() {
@@ -182,7 +183,7 @@ impl<Handle: Clone + PartialEq + std::fmt::Debug> BroadPhase<Handle> for QuadTre
         collisions
     }
 
-    fn check_collisions(&self) -> Vec<BroadCollision<Handle>> {
+    fn check_collisions(&self) -> Vec<CollisionPair<Handle>> {
         let mut collisions = vec![];
         // first check for collision if there is a node child
         // with ALL the children
@@ -193,7 +194,7 @@ impl<Handle: Clone + PartialEq + std::fmt::Debug> BroadPhase<Handle> for QuadTre
             // check for collisions with children within the same area
             for b in &self.children[(i + 1)..] {
                 if a.aabb.intersects(&b.aabb) {
-                    collisions.push(BroadCollision {
+                    collisions.push(CollisionPair {
                         a: a.handle.clone(),
                         b: b.handle.clone(),
                     });
@@ -202,7 +203,7 @@ impl<Handle: Clone + PartialEq + std::fmt::Debug> BroadPhase<Handle> for QuadTre
             // check for collisions with sub children
             for sub_child in &sub_children {
                 if a.aabb.intersects(&sub_child.aabb) {
-                    collisions.push(BroadCollision {
+                    collisions.push(CollisionPair {
                         a: a.handle.clone(),
                         b: sub_child.handle.clone(),
                     });

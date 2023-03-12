@@ -9,12 +9,11 @@ pub struct Contact<T> {
 #[derive(Debug)]
 pub struct Collision<T, Handle> {
     pub contact: Contact<T>,
-    pub a:       Handle,
-    pub b:       Handle,
+    pub pair:    CollisionPair<Handle>,
 }
 
-#[derive(Debug)]
-pub struct BroadCollision<Handle> {
+#[derive(Debug, Clone, Copy)]
+pub struct CollisionPair<Handle> {
     pub a: Handle,
     pub b: Handle,
 }

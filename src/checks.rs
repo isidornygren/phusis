@@ -4,8 +4,8 @@ use crate::{
     Vec2,
 };
 
-fn distance_squared(vec: &Vec2<f32>) -> f32 {
-    (vec.x).powf(2f32) + (vec.y).powf(2f32)
+fn distance_squared(vec: Vec2<f32>) -> f32 {
+    (vec.x).powi(2) + (vec.y).powi(2)
 }
 
 pub fn aabb_vs_aabb(a: &AABB<f32>, b: &AABB<f32>) -> Option<Contact<f32>> {
@@ -59,30 +59,31 @@ pub fn rect_vs_rect(
 pub fn circle_vs_circle(
     a_circle: &Circle,
     b_circle: &Circle,
-    a_position: &Vec2<f32>,
-    b_position: &Vec2<f32>,
+    a_position: Vec2<f32>,
+    b_position: Vec2<f32>,
 ) -> Option<Contact<f32>> {
-    let normal = *b_position - *a_position;
+    let distance = b_position - a_position;
 
-    let radius = (a_circle.radius + b_circle.radius).powf(2f32);
+    let radius = (a_circle.radius + b_circle.radius).powi(2);
 
-    let distance_sqr = distance_squared(&normal);
+    let distance_sqr = distance_squared(distance);
 
     if distance_sqr > radius {
         return None;
     }
-    let distance = distance_sqr.sqrt();
 
-    if distance != 0f32 {
+    let distance_sqrt = distance_sqr.sqrt();
+
+    if distance_sqrt != 0f32 {
         return Some(Contact {
-            penetration_depth: (a_circle.radius + b_circle.radius) - distance,
-            normal:            normal / distance,
+            penetration_depth: (a_circle.radius + b_circle.radius) - distance_sqrt,
+            normal:            distance / distance_sqrt,
         });
     }
     // Circles are on the same position
     // Choose random (but consistent) values
     Some(Contact {
-        penetration_depth: a_circle.radius,
+        penetration_depth: a_circle.radius.min(b_circle.radius),
         normal:            Vec2::new(1f32, 0f32),
     })
 }
@@ -122,7 +123,7 @@ pub fn rect_vs_circle(
         }
     }
 
-    let distance = distance_squared(&(normal - closest));
+    let distance = distance_squared(normal - closest);
     let radius = b_circle.radius;
 
     // Return none if radius is shorter than distance to closest

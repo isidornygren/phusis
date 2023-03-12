@@ -1,26 +1,22 @@
 use bevy::prelude::*;
 
-use super::components::{Fixed, PhysicsWorldResource};
+use super::components::PhysicsWorldResource;
 use crate::{
-    bevy::components::{Collider, Collisions, ComponentBodyHandle, Sensor},
-    body::{Body, BodySensor},
-    checks::{circle_vs_circle, rect_vs_circle, rect_vs_rect},
-    collision::{BroadCollision, Collision},
-    shape::Shape,
-    world::broad::{BroadPhase, BroadPhaseElement},
+    bevy::components::{Collider, Collisions, ComponentBodyHandle},
+    body::Body,
 };
 
 pub fn on_body_change(
     mut commands: Commands,
     mut physics_world: ResMut<PhysicsWorldResource>,
-    query: Query<(&Collider, &Transform, Option<&Sensor>, Entity), Added<Collider>>,
+    query: Query<(&Collider, &Transform, Entity), Added<Collider>>,
 ) {
-    for (collider, transform, sensor, entity) in query.iter() {
+    for (collider, transform, entity) in query.iter() {
         let handle = physics_world.physics_world.add_body(Body {
             shape: collider.shape.clone(),
             position: crate::Vec2::new(transform.translation.x, transform.translation.y),
             fixed: collider.fixed,
-            // sensor: sensor.is_some(),
+            sensor: collider.sensor,
             entity,
             ..default()
         });
@@ -61,14 +57,14 @@ pub fn update_physics(
         if let Ok(mut collision_entity) = collisions_q.get_mut(
             physics_world
                 .physics_world
-                .get_body(&collision.a)
+                .get_body(collision.pair.a)
                 .unwrap()
                 .entity,
         ) {
             collision_entity.entities.push(
                 physics_world
                     .physics_world
-                    .get_body(&collision.b)
+                    .get_body(collision.pair.b)
                     .unwrap()
                     .entity,
             );
@@ -76,7 +72,7 @@ pub fn update_physics(
     }
 
     for (body_handle, mut transform) in query.iter_mut() {
-        if let Some(body) = physics_world.physics_world.get_body(&body_handle.handle) {
+        if let Some(body) = physics_world.physics_world.get_body(body_handle.handle) {
             if transform.translation.x != body.position.x
                 && transform.translation.y != body.position.y
             {

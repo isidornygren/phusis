@@ -13,15 +13,13 @@ pub struct Collider {
     pub mass:         f32,
     pub constitution: f32,
     pub fixed:        bool,
+    pub sensor:       bool,
 }
 
 #[derive(Component, Default)]
 pub struct Collisions {
     pub entities: Vec<Entity>,
 }
-
-#[derive(Component)]
-pub struct Sensor;
 
 #[derive(Component)]
 pub struct Fixed;

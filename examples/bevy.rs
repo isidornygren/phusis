@@ -15,7 +15,7 @@ fn setup(mut commands: Commands) {
 fn add_bodies(mut commands: Commands) {
     let mut rng = rand::thread_rng();
 
-    for _ in 0..500 {
+    for _ in 0..5000 {
         let x = rng.gen_range(-100..100) as f32;
         let y = rng.gen_range(-100..100) as f32;
         let radius = 30.0;
@@ -27,6 +27,7 @@ fn add_bodies(mut commands: Commands) {
                 shape:        Shape::Circle(Circle::new(radius)),
                 constitution: 1.0,
                 fixed:        false,
+                sensor:       false,
             });
     }
 

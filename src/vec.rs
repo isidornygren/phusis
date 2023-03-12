@@ -7,6 +7,7 @@ pub struct Vec2<T> {
 }
 
 impl<T> Vec2<T> {
+    #[inline]
     #[must_use]
     pub fn new(x: T, y: T) -> Self {
         Self { x, y }
@@ -17,9 +18,21 @@ impl<T> Vec2<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy,
 {
+    #[inline]
     #[must_use]
     pub fn dot(&self, other: &Self) -> T {
         (self.x * other.x) + (self.y * other.y)
+    }
+}
+
+impl<T> Vec2<T>
+where
+    T: Add<Output = T> + Copy,
+{
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> T {
+        self.x + self.y
     }
 }
 
@@ -56,17 +69,6 @@ where
         }
     }
 }
-
-// impl<T> Add<Vec2<T>> for T {
-//     type Output = Vec2<T>;
-
-//     fn add(self, other: Vec2<T>) -> Vec2<T> {
-//         Vec2 {
-//             x: other.x + self,
-//             y: other.y + self,
-//         }
-//     }
-// }
 
 impl<T> AddAssign for Vec2<T>
 where
@@ -120,17 +122,6 @@ where
     }
 }
 
-// impl<T> Sub<Vec2<T>> for T {
-//     type Output = Vec2<T>;
-
-//     fn sub(self, other: Vec2<T>) -> Vec2<T> {
-//         Vec2 {
-//             x: other.x - self,
-//             y: other.y - self,
-//         }
-//     }
-// }
-
 impl<T> SubAssign for Vec2<T>
 where
     T: Sub<Output = T> + Copy,
@@ -183,17 +174,6 @@ where
     }
 }
 
-// impl<T> Mul<Vec2<T>> for T {
-//     type Output = Vec2<T>;
-
-//     fn mul(self, other: Vec2<T>) -> Vec2<T> {
-//         Vec2 {
-//             x: other.x * self,
-//             y: other.y * self,
-//         }
-//     }
-// }
-
 impl<T> Div for Vec2<T>
 where
     T: Div<Output = T>,
@@ -221,14 +201,3 @@ where
         }
     }
 }
-
-// impl<T> Div<Vec2<T>> for T {
-//     type Output = Vec2<T>;
-
-//     fn div(self, other: Vec2<T>) -> Vec2<T> {
-//         Vec2 {
-//             x: other.x / self,
-//             y: other.y / self,
-//         }
-//     }
-// }

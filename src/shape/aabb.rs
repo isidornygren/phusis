@@ -36,9 +36,9 @@ where
     #[inline]
     #[must_use]
     pub fn intersects(&self, other: &AABB<T>) -> bool {
-        !(other.min.x > self.max.x
-            || other.max.x < self.min.x
-            || other.min.y < self.max.y
-            || other.min.y > self.max.y)
+        !(self.min.x > other.max.x
+            || self.max.x < other.min.x
+            || self.min.y > other.max.y
+            || self.max.y < other.min.y)
     }
 }

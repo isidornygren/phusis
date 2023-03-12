@@ -1,4 +1,4 @@
-use crate::{collision::BroadCollision, shape::AABB};
+use crate::{collision::CollisionPair, shape::AABB};
 
 #[derive(Debug, Clone)]
 pub struct BroadPhaseElement<Handle> {
@@ -29,7 +29,7 @@ where
     fn insert(&mut self, element: BroadPhaseElement<Handle>);
     fn remove(&mut self, element: BroadPhaseElement<Handle>);
     fn check(&self, element: AABB<i32>) -> Vec<Handle>;
-    fn check_collisions(&self) -> Vec<BroadCollision<Handle>>;
+    fn check_collisions(&self) -> Vec<CollisionPair<Handle>>;
     fn clear(&mut self);
     /**
      * Removes any dangling nodes,
