@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Sub};
 
 use crate::Vec2;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct AABB<T> {
     pub min: Vec2<T>,
     pub max: Vec2<T>,

@@ -4,7 +4,7 @@ use self::broad::{BroadPhase, BroadPhaseElement};
 use crate::{
     body::Body,
     checks::{circle_vs_circle, rect_vs_circle, rect_vs_rect},
-    collision::Collision,
+    collision::{Collision, CollisionPair},
     shape::Shape,
     Vec2,
 };
@@ -97,13 +97,13 @@ pub type ArenaHandle = Index;
 pub struct PhysicsWorld<Broad>
 where
     Broad: BroadPhase<ArenaHandle>, {
-    bodies:          Arena<Body>,
+    pub bodies:      Arena<Body>,
     pub broad_phase: Broad,
 }
 
 impl<Broad> PhysicsWorld<Broad>
 where
-    Broad: BroadPhase<ArenaHandle>,
+    Broad: BroadPhase<ArenaHandle> + std::fmt::Debug,
 {
     pub fn new(broad_phase: Broad) -> Self {
         Self {
@@ -149,12 +149,6 @@ where
         self.bodies.get(handle)
     }
 
-    #[must_use]
-    #[inline]
-    pub fn get_body_mut(&mut self, handle: ArenaHandle) -> Option<&mut Body> {
-        self.bodies.get_mut(handle)
-    }
-
     fn calc_velocity(&mut self, dt: f32) {
         // Update position of bodies based on velocity
         for (_, body) in &mut self.bodies {
@@ -181,7 +175,6 @@ where
         self.calc_velocity(dt);
         // Broad phase
         let broad_collisions = self.broad_phase.check_collisions();
-
         // Narrow phase
         let collisions =
             broad_collisions
@@ -249,6 +242,7 @@ where
                 });
             }
         }
+
         self.broad_phase.clean_up();
 
         collisions

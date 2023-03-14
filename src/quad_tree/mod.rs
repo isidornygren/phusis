@@ -1,3 +1,5 @@
+use bevy::utils::HashSet;
+
 use crate::{
     collision::CollisionPair,
     shape::AABB,
@@ -26,7 +28,7 @@ where
 
 impl<Handle> QuadTree<Handle>
 where
-    Handle: Clone,
+    Handle: Clone + PartialEq + std::fmt::Debug + PartialEq + Eq + std::hash::Hash + Copy,
 {
     pub fn new(level: u8, bounds: AABB<i32>) -> Self {
         QuadTree {
@@ -70,153 +72,110 @@ where
         ]);
     }
 
-    /**
-     * Determine which node the object belongs to
-     */
-    fn get_index(&self, aabb: &AABB<i32>) -> Option<usize> {
-        let vertical_midpoint = self.bounds.min.y + (self.bounds.height() / 2);
-        let horizontal_midpoint = self.bounds.min.x + (self.bounds.width() / 2);
-
-        // if object can completely fit within the top quadrants
-        let top_quad = aabb.min.y < vertical_midpoint && aabb.max.y < vertical_midpoint;
-        let bottom_quad = aabb.min.y > vertical_midpoint;
-
-        if aabb.min.x < horizontal_midpoint && aabb.max.x < horizontal_midpoint {
-            if top_quad {
-                return Some(QuadCorner::TopLeft as usize);
-            } else if bottom_quad {
-                return Some(QuadCorner::BottomLeft as usize);
-            }
-        } else if aabb.min.x > horizontal_midpoint {
-            if top_quad {
-                return Some(QuadCorner::TopRight as usize);
-            } else if bottom_quad {
-                return Some(QuadCorner::BottomRight as usize);
-            }
-        }
-        None
-    }
-
-    fn get_children(&self) -> Vec<BroadPhaseElement<Handle>> {
-        let mut nodes_children = self.get_node_children();
-        nodes_children.extend(self.children.clone());
-        nodes_children
-    }
-
-    fn get_node_children(&self) -> Vec<BroadPhaseElement<Handle>> {
-        let mut nodes_children = vec![];
-        if let Some(nodes) = &self.nodes {
-            for node in nodes.iter() {
-                nodes_children.extend(node.get_children());
-            }
-        }
-        nodes_children
-    }
-}
-
-impl<Handle: Clone + PartialEq + std::fmt::Debug> BroadPhase<Handle> for QuadTree<Handle> {
-    fn insert(&mut self, element: BroadPhaseElement<Handle>) {
-        let index = self.get_index(&element.aabb);
-        if let (Some(nodes), Some(i)) = (&mut self.nodes, index) {
-            nodes[i].insert(element);
+    fn inner_insert(&mut self, element: BroadPhaseElement<Handle>) {
+        if !element.aabb.intersects(&self.bounds) {
             return;
         }
-        // The child will exist in two places with this code.
-        self.children.push(element);
-        if self.children.len() > MAX_CHILDREN && self.level < MAX_DEPTH {
-            if self.nodes.is_none() {
-                self.split();
+        if let Some(nodes) = &mut self.nodes {
+            for node in nodes {
+                node.inner_insert(element);
             }
-            let mut i = 0;
-            while i < self.children.len() {
-                let element = &self.children[i];
-                match self.get_index(&element.aabb) {
-                    Some(quadrant_index) => {
-                        self.nodes.as_mut().unwrap()[quadrant_index]
-                            .insert(self.children.remove(i));
-                    },
-                    None => {
-                        i += 1;
-                    },
+        } else {
+            self.children.push(element);
+            if self.children.len() > MAX_CHILDREN && self.level < MAX_DEPTH {
+                self.split();
+                let children = std::mem::take(&mut self.children);
+                for child in children {
+                    for node in self.nodes.as_mut().unwrap() {
+                        node.inner_insert(child);
+                    }
                 }
             }
         }
     }
 
+    fn inner_check_collisions(&self, collision_set: &mut HashSet<CollisionPair<Handle>>) {
+        if let Some(nodes) = &self.nodes {
+            for node in nodes.iter() {
+                node.inner_check_collisions(collision_set);
+            }
+        } else {
+            for (i, a) in self.children.iter().enumerate() {
+                // check for collisions with children within the same area
+                for b in &self.children[(i + 1)..] {
+                    if a.aabb.intersects(&b.aabb) {
+                        collision_set.insert(CollisionPair {
+                            a: a.handle,
+                            b: b.handle,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<Handle: Clone + Copy + PartialEq + std::fmt::Debug + PartialEq + Eq + std::hash::Hash>
+    BroadPhase<Handle> for QuadTree<Handle>
+{
+    fn insert(&mut self, element: BroadPhaseElement<Handle>) {
+        self.inner_insert(element);
+    }
+
+    fn len(&self) -> usize {
+        self.children.len()
+            + self.nodes.as_ref().map_or(0, |nodes| {
+                nodes.iter().fold(0, |sum, node| sum + node.len())
+            })
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     fn remove(&mut self, element: BroadPhaseElement<Handle>) {
-        if let Some(index) = self
+        if !element.aabb.intersects(&self.bounds) {
+            return;
+        }
+
+        if let Some(nodes) = self.nodes.as_mut() {
+            for node in nodes {
+                node.remove(element);
+            }
+        } else if let Some(index) = self
             .children
             .iter()
             .position(|child| element.handle == child.handle)
         {
-            // Remove that index
-            self.children.remove(index);
-        } else {
-            // Traverse to a child quad tree
-            if let Some(quadrant_index) = self.get_index(&element.aabb) {
-                if let Some(node) = self.nodes.as_mut() {
-                    node[quadrant_index].remove(element);
-                } else {
-                    unreachable!(
-                        "Quadrant {} not found on quad tree\nElement: {:?}",
-                        quadrant_index, element
-                    );
-                }
-            }
+            self.children.swap_remove(index);
         }
     }
 
     fn check(&self, aabb: AABB<i32>) -> Vec<Handle> {
-        let index = self.get_index(&aabb);
-        if let (Some(nodes), Some(i)) = (&self.nodes, index) {
-            return nodes[i].check(aabb);
-        }
-
         let mut collisions = vec![];
-
-        // Either the element should only check in this node, or the node has no children
-        for child in self.get_children() {
+        if !aabb.intersects(&self.bounds) {
+            return collisions;
+        }
+        if let Some(nodes) = &self.nodes {
+            for node in nodes {
+                collisions.extend(node.check(aabb));
+            }
+            return collisions;
+        }
+        for child in &self.children {
             if aabb.intersects(&child.aabb) {
-                collisions.push(child.handle.clone());
+                collisions.push(child.handle);
             }
         }
         collisions
     }
 
     fn check_collisions(&self) -> Vec<CollisionPair<Handle>> {
-        let mut collisions = vec![];
-        // first check for collision if there is a node child
-        // with ALL the children
-        let sub_children = self.get_node_children();
-        // check for collision within its children and the
-        // sub children
-        for (i, a) in self.children.iter().enumerate() {
-            // check for collisions with children within the same area
-            for b in &self.children[(i + 1)..] {
-                if a.aabb.intersects(&b.aabb) {
-                    collisions.push(CollisionPair {
-                        a: a.handle.clone(),
-                        b: b.handle.clone(),
-                    });
-                }
-            }
-            // check for collisions with sub children
-            for sub_child in &sub_children {
-                if a.aabb.intersects(&sub_child.aabb) {
-                    collisions.push(CollisionPair {
-                        a: a.handle.clone(),
-                        b: sub_child.handle.clone(),
-                    });
-                }
-            }
-        }
-        // Go deeper!
-        if let Some(nodes) = &self.nodes {
-            for node in nodes.iter() {
-                collisions.extend(node.check_collisions());
-            }
-        }
-        collisions
+        let mut collisions = HashSet::new();
+
+        self.inner_check_collisions(&mut collisions);
+
+        collisions.into_iter().collect()
     }
 
     fn clear(&mut self) {
@@ -257,7 +216,7 @@ mod tests {
 
     #[test]
     fn it_inserts_maximum_children() {
-        let mut quad_tree = QuadTree::new(0, AABB::new(-1, -1, 1, 1));
+        let mut quad_tree = QuadTree::new(0, AABB::new(-1, -1, 2, 2));
         let mut bodies = Arena::new();
 
         for _ in 0..MAX_CHILDREN {
@@ -273,11 +232,12 @@ mod tests {
     }
 
     #[test]
-    fn is_splits_into_quadrants() {
-        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 10, 10));
+    fn it_splits_into_quadrants() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 20, 20));
         let mut bodies = Arena::new();
 
         let length = MAX_CHILDREN * 4;
+
         for i in 0..length {
             let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
             let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
@@ -299,20 +259,14 @@ mod tests {
         }
 
         assert_eq!(quad_tree.children.len(), 0);
+        let nodes = quad_tree.nodes.as_ref().unwrap();
+
         assert_eq!(
             (
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopLeft as usize]
-                    .children
-                    .len(),
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopRight as usize]
-                    .children
-                    .len(),
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomLeft as usize]
-                    .children
-                    .len(),
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomRight as usize]
-                    .children
-                    .len()
+                nodes[QuadCorner::TopLeft as usize].children.len(),
+                nodes[QuadCorner::TopRight as usize].children.len(),
+                nodes[QuadCorner::BottomLeft as usize].children.len(),
+                nodes[QuadCorner::BottomRight as usize].children.len()
             ),
             (MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
         );
@@ -320,7 +274,7 @@ mod tests {
 
     #[test]
     fn it_removes_body() {
-        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 10, 10));
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 20, 20));
         let mut bodies = Arena::new();
         let mut bodies_to_remove = vec![];
 
@@ -352,20 +306,14 @@ mod tests {
             });
         });
         assert_eq!(quad_tree.children.len(), 0);
+        let nodes = quad_tree.nodes.as_ref().unwrap();
+
         assert_eq!(
             (
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopLeft as usize]
-                    .children
-                    .len(),
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::TopRight as usize]
-                    .children
-                    .len(),
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomLeft as usize]
-                    .children
-                    .len(),
-                quad_tree.nodes.as_ref().unwrap()[QuadCorner::BottomRight as usize]
-                    .children
-                    .len()
+                nodes[QuadCorner::TopLeft as usize].children.len(),
+                nodes[QuadCorner::TopRight as usize].children.len(),
+                nodes[QuadCorner::BottomLeft as usize].children.len(),
+                nodes[QuadCorner::BottomRight as usize].children.len()
             ),
             (0, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
         );

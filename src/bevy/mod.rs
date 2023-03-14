@@ -30,7 +30,10 @@ pub struct PhusisBevyPlugin;
 impl Plugin for PhusisBevyPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PhysicsWorldResource {
-            physics_world: PhysicsWorld::new(QuadTree::new(0, AABB::new(-1000, -1000, 1000, 1000))),
+            physics_world: PhysicsWorld::new(QuadTree::new(
+                0,
+                AABB::new(-5000, -5000, 10000, 10000),
+            )),
         })
         .add_stage_after(
             CoreStage::PostUpdate,

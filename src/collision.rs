@@ -7,13 +7,17 @@ pub struct Contact<T> {
 }
 
 #[derive(Debug)]
-pub struct Collision<T, Handle> {
+pub struct Collision<T, Handle>
+where
+    Handle: Eq + std::hash::Hash + PartialEq, {
     pub contact: Contact<T>,
     pub pair:    CollisionPair<Handle>,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct CollisionPair<Handle> {
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+pub struct CollisionPair<Handle>
+where
+    Handle: Eq + std::hash::Hash + PartialEq, {
     pub a: Handle,
     pub b: Handle,
 }

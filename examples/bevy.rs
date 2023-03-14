@@ -16,8 +16,8 @@ fn add_bodies(mut commands: Commands) {
     let mut rng = rand::thread_rng();
 
     for _ in 0..5000 {
-        let x = rng.gen_range(-100..100) as f32;
-        let y = rng.gen_range(-100..100) as f32;
+        let x = rng.gen_range(-500..500) as f32;
+        let y = rng.gen_range(-500..500) as f32;
         let radius = 30.0;
 
         commands

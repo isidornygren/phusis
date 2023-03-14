@@ -1,6 +1,6 @@
 use crate::{collision::CollisionPair, shape::AABB};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BroadPhaseElement<Handle> {
     pub aabb:   AABB<i32>,
     pub handle: Handle,
@@ -25,12 +25,14 @@ pub struct BroadPhaseElement<Handle> {
 
 pub trait BroadPhase<Handle>
 where
-    Handle: Clone, {
+    Handle: Clone + Eq + PartialEq + std::hash::Hash, {
     fn insert(&mut self, element: BroadPhaseElement<Handle>);
     fn remove(&mut self, element: BroadPhaseElement<Handle>);
     fn check(&self, element: AABB<i32>) -> Vec<Handle>;
     fn check_collisions(&self) -> Vec<CollisionPair<Handle>>;
     fn clear(&mut self);
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
     /**
      * Removes any dangling nodes,
      * returns true if the node was empty
