@@ -151,23 +151,21 @@ impl<Handle: Clone + Copy + PartialEq + std::fmt::Debug + PartialEq + Eq + std::
         }
     }
 
-    fn check(&self, aabb: AABB<i32>) -> Vec<Handle> {
-        let mut collisions = vec![];
+    fn check(&self, aabb: AABB<i32>, collisions: &mut HashSet<Handle>) {
         if !aabb.intersects(&self.bounds) {
-            return collisions;
+            return;
         }
         if let Some(nodes) = &self.nodes {
             for node in nodes {
-                collisions.extend(node.check(aabb));
+                node.check(aabb, collisions);
             }
-            return collisions;
+            return;
         }
         for child in &self.children {
             if aabb.intersects(&child.aabb) {
-                collisions.push(child.handle);
+                collisions.insert(child.handle);
             }
         }
-        collisions
     }
 
     fn check_collisions(&self) -> Vec<CollisionPair<Handle>> {

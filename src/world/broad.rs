@@ -1,3 +1,5 @@
+use bevy::utils::HashSet;
+
 use crate::{collision::CollisionPair, shape::AABB};
 
 #[derive(Debug, Clone, Copy)]
@@ -28,7 +30,7 @@ where
     Handle: Clone + Eq + PartialEq + std::hash::Hash, {
     fn insert(&mut self, element: BroadPhaseElement<Handle>);
     fn remove(&mut self, element: BroadPhaseElement<Handle>);
-    fn check(&self, element: AABB<i32>) -> Vec<Handle>;
+    fn check(&self, element: AABB<i32>, collisions: &mut HashSet<Handle>);
     fn check_collisions(&self) -> Vec<CollisionPair<Handle>>;
     fn clear(&mut self);
     fn len(&self) -> usize;
