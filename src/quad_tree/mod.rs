@@ -234,119 +234,118 @@ impl<Handle: Clone + Copy + PartialEq + std::fmt::Debug + PartialEq + Eq + std::
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use generational_arena::Arena;
+#[cfg(test)]
+mod tests {
+    use generational_arena::Arena;
 
-//     use super::*;
-//     use crate::{
-//         body::Body,
-//         shape::{Circle, Shape},
-//         Vec2,
-//     };
+    use super::*;
+    use crate::{
+        body::Body,
+        shape::{Circle, Shape},
+        Vec2,
+    };
 
-//     #[test]
-//     fn it_inserts_maximum_children() {
-//         let mut quad_tree = QuadTree::new(0, AABB::new(-1, -1, 2, 2));
-//         let mut bodies = Arena::new();
+    fn is_leaf_with_len<Handle>(node: &Node<Handle>, expected_len: usize)  -> bool where Handle: Clone {
+       return match node {
+           Node::Leaf(children) => {children.len() == expected_len},
+           Node::Branch(_) => {false},
+       }
+    }
 
-//         for _ in 0..MAX_CHILDREN {
-//             let body = Body::default();
+    #[test]
+    fn it_inserts_maximum_children() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-1, -1, 2, 2));
+        let mut bodies = Arena::new();
 
-//             quad_tree.insert(BroadPhaseElement {
-//                 aabb:   body.get_aabb(),
-//                 handle: bodies.insert(body),
-//             });
-//         }
+        for _ in 0..MAX_CHILDREN {
+            let body = Body::default();
 
-//         assert_eq!(quad_tree.children.len(), MAX_CHILDREN);
-//     }
+            quad_tree.insert(BroadPhaseElement {
+                aabb:   body.get_aabb(),
+                handle: bodies.insert(body),
+            });
+        };
 
-//     #[test]
-//     fn it_splits_into_quadrants() {
-//         let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 20, 20));
-//         let mut bodies = Arena::new();
+        assert!(is_leaf_with_len(&quad_tree.node, MAX_CHILDREN));
+    }
 
-//         let length = MAX_CHILDREN * 4;
+    #[test]
+    fn it_splits_into_quadrants() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 20, 20));
+        let mut bodies = Arena::new();
 
-//         for i in 0..length {
-//             let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
-//             let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
+        let length = MAX_CHILDREN * 4;
 
-//             let body = Body::new(
-//                 1.0,
-//                 1.0,
-//                 Shape::Circle(Circle::new(0.1)),
-//                 Vec2::new(x, y),
-//                 false,
-//                 false,
-//                 Body::default().entity,
-//             );
+        for i in 0..length {
+            let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
+            let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
 
-//             quad_tree.insert(BroadPhaseElement {
-//                 aabb:   body.get_aabb(),
-//                 handle: bodies.insert(body),
-//             });
-//         }
+            let body = Body::new(
+                1.0,
+                1.0,
+                Shape::Circle(Circle::new(0.1)),
+                Vec2::new(x, y),
+                false,
+                false,
+                Body::default().entity,
+            );
 
-//         assert_eq!(quad_tree.children.len(), 0);
-//         let nodes = quad_tree.nodes.as_ref().unwrap();
+            quad_tree.insert(BroadPhaseElement {
+                aabb:   body.get_aabb(),
+                handle: bodies.insert(body),
+            });
+        };
+        if let Node::Branch(nodes) = quad_tree.node {
+            assert!(is_leaf_with_len(&nodes[0].node, MAX_CHILDREN));
+            assert!(is_leaf_with_len(&nodes[1].node, MAX_CHILDREN));
+            assert!(is_leaf_with_len(&nodes[2].node, MAX_CHILDREN));
+            assert!(is_leaf_with_len(&nodes[3].node, MAX_CHILDREN));
+        } else {
+            panic!("Quad tree is a leaf");
+        }
+    }
 
-//         assert_eq!(
-//             (
-//                 nodes[0].children.len(),
-//                 nodes[1].children.len(),
-//                 nodes[2].children.len(),
-//                 nodes[3].children.len()
-//             ),
-//             (MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
-//         );
-//     }
+    #[test]
+    fn it_removes_body() {
+        let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 20, 20));
+        let mut bodies = Arena::new();
+        let mut bodies_to_remove = vec![];
 
-//     #[test]
-//     fn it_removes_body() {
-//         let mut quad_tree = QuadTree::new(0, AABB::new(-10, -10, 20, 20));
-//         let mut bodies = Arena::new();
-//         let mut bodies_to_remove = vec![];
+        let length = MAX_CHILDREN * 4;
+        for i in 0..length {
+            let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
+            let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
 
-//         let length = MAX_CHILDREN * 4;
-//         for i in 0..length {
-//             let x = ((i / (length / 4)) % 2) as f32 * 20.0 - 10.0;
-//             let y = (i / (length / 2)) as f32 * 20.0 - 10.0;
+            let body = Body::new(
+                1.0,
+                1.0,
+                Shape::Circle(Circle::new(0.1)),
+                Vec2::new(x, y),
+                false,
+                false,
+                Body::default().entity,
+            );
+            let aabb = body.get_aabb();
+            let handle = bodies.insert(body);
+            if x == -10.0 && y == -10.0 {
+                bodies_to_remove.push(handle);
+            }
+            quad_tree.insert(BroadPhaseElement { handle, aabb });
+        }
+        bodies_to_remove.iter().for_each(|handle| {
+            quad_tree.remove(BroadPhaseElement {
+                handle: *handle,
+                aabb:   bodies.get(*handle).unwrap().get_aabb(),
+            });
+        });
 
-//             let body = Body::new(
-//                 1.0,
-//                 1.0,
-//                 Shape::Circle(Circle::new(0.1)),
-//                 Vec2::new(x, y),
-//                 false,
-//                 false,
-//                 Body::default().entity,
-//             );
-//             let aabb = body.get_aabb();
-//             let handle = bodies.insert(body);
-//             if x == -10.0 && y == -10.0 {
-//                 bodies_to_remove.push(handle);
-//             }
-//             quad_tree.insert(BroadPhaseElement { handle, aabb });
-//         }
-//         bodies_to_remove.iter().for_each(|handle| {
-//             quad_tree.remove(BroadPhaseElement {
-//                 handle: *handle,
-//                 aabb:   bodies.get(*handle).unwrap().get_aabb(),
-//             });
-//         });
-//         assert_eq!(quad_tree.children.len(), 0);
-//         let nodes = quad_tree.nodes.as_ref().unwrap();
-
-//         assert_eq!(
-//             (
-//                 nodes[0].children.len(),
-//                 nodes[1].children.len(),
-//                 nodes[2].children.len(),
-//                 nodes[3].children.len()
-//             ),
-//             (0, MAX_CHILDREN, MAX_CHILDREN, MAX_CHILDREN)
-//         );
-//     }
-// }
+        if let Node::Branch(nodes) = quad_tree.node {
+            assert!(is_leaf_with_len(&nodes[0].node, 0));
+            assert!(is_leaf_with_len(&nodes[1].node, MAX_CHILDREN));
+            assert!(is_leaf_with_len(&nodes[2].node, MAX_CHILDREN));
+            assert!(is_leaf_with_len(&nodes[3].node, MAX_CHILDREN));
+        } else {
+            panic!("Quad tree is a leaf");
+        }
+    }
+}
