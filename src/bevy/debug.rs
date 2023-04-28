@@ -26,13 +26,14 @@ fn debug_physics(
                     feature: shapes::RegularPolygonFeature::Radius(circle.radius / scale),
                     ..default()
                 };
-                commands.entity(entity).insert(GeometryBuilder::build_as(
-                    &shape,
-                    DrawMode::Outlined {
-                        fill_mode:    FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-                        outline_mode: StrokeMode::new(color, 1.0 / scale),
+                commands.entity(entity).insert((
+                    ShapeBundle {
+                        path: GeometryBuilder::build_as(&shape),
+                        transform: *transform,
+                        ..default()
                     },
-                    *transform,
+                    Fill::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+                    Stroke::new(color, 1.0 / scale),
                 ));
             },
             Shape::Rect(rect) => {
@@ -40,13 +41,14 @@ fn debug_physics(
                     extents: Vec2::new(rect.x / scale, rect.y / scale),
                     ..default()
                 };
-                commands.entity(entity).insert(GeometryBuilder::build_as(
-                    &shape,
-                    DrawMode::Outlined {
-                        fill_mode:    FillMode::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-                        outline_mode: StrokeMode::new(color, 1.0 / scale),
+                commands.entity(entity).insert((
+                    ShapeBundle {
+                        path: GeometryBuilder::build_as(&shape),
+                        transform: *transform,
+                        ..default()
                     },
-                    *transform,
+                    Fill::color(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+                    Stroke::new(color, 1.0 / scale),
                 ));
             },
         };

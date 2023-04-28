@@ -65,7 +65,7 @@ fn add_bodies(mut commands: Commands) {
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
+        .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(PhusisBevyPlugin)
         .add_plugin(LogDiagnosticsPlugin::default())

@@ -1,4 +1,4 @@
-use bevy::utils::HashSet;
+use std::collections::HashSet;
 
 use crate::{collision::CollisionPair, shape::AABB};
 

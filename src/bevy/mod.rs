@@ -1,13 +1,6 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::ShapePlugin;
 
-use crate::{
-    // bevy::components::PhysicsWorldResource,
-    quad_tree::QuadTree,
-    shape::AABB,
-    world::PhysicsWorld,
-};
-
 mod components;
 #[cfg(feature = "bevy_debug")]
 mod debug;
@@ -16,14 +9,7 @@ mod systems;
 pub use components::{Collider, Collisions};
 
 use self::components::PhysicsWorldResource;
-
-#[derive(StageLabel)]
-pub enum PhusisStage {
-    Init,
-    PreUpdate,
-    Update,
-    PostUpdate,
-}
+use crate::{shape::AABB, world::PhysicsWorld, QuadTree};
 
 pub struct PhusisBevyPlugin;
 
@@ -35,29 +21,13 @@ impl Plugin for PhusisBevyPlugin {
                 AABB::new(-5000, -5000, 10000, 10000),
             )),
         })
-        .add_stage_after(
-            CoreStage::PostUpdate,
-            PhusisStage::Init,
-            SystemStage::parallel(),
-        )
-        .add_stage_after(
-            PhusisStage::Init,
-            PhusisStage::PreUpdate,
-            SystemStage::parallel(),
-        )
-        .add_stage_after(
-            PhusisStage::PreUpdate,
-            PhusisStage::Update,
-            SystemStage::parallel(),
-        )
-        .add_stage_after(
-            PhusisStage::Update,
-            PhusisStage::PostUpdate,
-            SystemStage::parallel(),
-        )
-        .add_system_to_stage(PhusisStage::Init, systems::on_body_change)
-        .add_system_to_stage(PhusisStage::PreUpdate, systems::on_body_transform_change)
-        .add_system_to_stage(PhusisStage::Update, systems::update_physics);
+        .add_system(systems::on_body_change)
+        .add_system(systems::update_physics)
+        .add_system(
+            systems::on_body_transform_change
+                .before(systems::update_physics)
+                .after(systems::on_body_change),
+        );
 
         #[cfg(feature = "bevy_debug")]
         app.add_plugin(ShapePlugin);

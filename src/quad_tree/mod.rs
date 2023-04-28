@@ -1,4 +1,4 @@
-use bevy::utils::HashSet;
+use std::collections::HashSet;
 
 use crate::{
     collision::CollisionPair,
@@ -246,7 +246,7 @@ mod tests {
     };
 
     fn is_leaf_with_len<Handle>(node: &Node<Handle>, expected_len: usize)  -> bool where Handle: Clone {
-       return match node {
+       match node {
            Node::Leaf(children) => {children.len() == expected_len},
            Node::Branch(_) => {false},
        }

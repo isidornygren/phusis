@@ -15,15 +15,15 @@ name = "phusis"
 path = "src/lib.rs"
 
 [dependencies]
-bevy = { version = "0.9", optional = true }
-bevy_prototype_lyon = { version = "0.7", optional = true }
+bevy = { version = "0.10", optional = true }
+bevy_prototype_lyon = { version = "0.8", optional = true }
 generational-arena = "0.2.8"
 
 [dev-dependencies]
 stopwatch = "0.0.7"
 rand = "0.8.5"
-bevy_prototype_lyon = "0.7"
-bevy = "0.9"
+bevy_prototype_lyon = "0.8"
+bevy = "0.10.1"
 criterion = { version = "0.4.0", features = ["html_reports"] }
 
 [[bench]]
